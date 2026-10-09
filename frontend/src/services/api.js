@@ -1,24 +1,32 @@
 import axios from 'axios'
 
-// Empty VITE_API_URL = same-origin (producción detrás de Nginx en :8080)
-// En local (Vite :5173) usamos el backend por defecto.
+/**
+ * Base del API:
+ * - DEV sin VITE_API_URL → http://localhost:8000
+ * - PROD (build) → .env.production → https://api.eca360.com.mx
+ * - Override puntual → VITE_API_URL en el entorno de build
+ */
 const envUrl = import.meta.env.VITE_API_URL
 const API_URL =
-  envUrl !== undefined && envUrl !== null && String(envUrl).length > 0
-    ? String(envUrl).replace(/\/$/, '')
+  envUrl !== undefined && envUrl !== null && String(envUrl).trim().length > 0
+    ? String(envUrl).trim().replace(/\/$/, '')
     : import.meta.env.DEV
       ? 'http://localhost:8000'
-      : ''
+      : 'https://api.eca360.com.mx'
+
+export function getApiBaseUrl() {
+  return API_URL
+}
 
 export const mediaUrl = (path) => {
   if (!path) return ''
   if (path.startsWith('http')) return path
   const normalized = path.startsWith('/') ? path : `/${path}`
-  return API_URL ? `${API_URL}${normalized}` : normalized
+  return `${API_URL}${normalized}`
 }
 
 const api = axios.create({
-  baseURL: API_URL || undefined,
+  baseURL: API_URL,
   headers: { 'Content-Type': 'application/json' },
 })
 

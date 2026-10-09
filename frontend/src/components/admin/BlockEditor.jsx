@@ -27,8 +27,7 @@ import {
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { BLOCK_TYPES, createBlock } from '../../lib/utils'
-import { mediaUrl, uploadApi } from '../../services/api'
-import { useSiteSettings } from '../../context/SiteSettingsContext'
+import { getApiBaseUrl, mediaUrl, uploadApi } from '../../services/api'
 import BlockRenderer from '../blocks/BlockRenderer'
 import clsx from 'clsx'
 
@@ -300,17 +299,15 @@ function UploadButton({ onUploaded, accept = 'image/*,video/*', label = 'Subir a
 }
 
 function BlockSettings({ block, onChange }) {
-  const { settings: siteSettings } = useSiteSettings()
   const c = block.content || {}
   const s = block.settings || {}
   const setContent = (patch) => onChange({ content: patch })
   const setSettings = (patch) => onChange({ settings: patch })
 
+  // Ingest es endpoint del API (Coolify), no del front (Cloudflare)
   const ingestCode = (s.ingest_code || '').trim().toLowerCase()
-  const publicBase = (siteSettings.public_site_url || (typeof window !== 'undefined' ? window.location.origin : ''))
-    .trim()
-    .replace(/\/+$/, '')
-  const ingestUrl = ingestCode ? `${publicBase}/ingest/${ingestCode}` : ''
+  const apiBase = getApiBaseUrl().replace(/\/+$/, '')
+  const ingestUrl = ingestCode ? `${apiBase}/ingest/${ingestCode}` : ''
 
   const copyIngestUrl = async () => {
     if (!ingestUrl) return
@@ -502,7 +499,7 @@ function BlockSettings({ block, onChange }) {
             />
             <p className="mt-1 text-xs text-muted">
               Guarda el evento después de poner el código. El otro sistema hará POST (fotos o videos) a
-              esta URL.
+              la API (<code className="text-[11px]">api.eca360.com.mx</code>), no al front.
             </p>
           </Field>
           {ingestUrl ? (

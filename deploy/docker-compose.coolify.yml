@@ -1,0 +1,35 @@
+# API-only para Coolify (sin frontend).
+# En Coolify puedes usar este compose o solo el Dockerfile.api.
+#
+# Volume /data → eca360.db + uploads
+# Dominio: api.eca360.com.mx
+
+services:
+  api:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile.api
+    restart: unless-stopped
+    ports:
+      - "${PORT:-8000}:8000"
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-sqlite:////data/eca360.db}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?set ADMIN_PASSWORD}
+      CORS_ORIGINS: ${CORS_ORIGINS:-https://eca360.com.mx,https://www.eca360.com.mx}
+      APP_NAME: ${APP_NAME:-ECA MID}
+      APP_URL: ${APP_URL:-https://eca360.com.mx}
+      API_URL: ${API_URL:-https://api.eca360.com.mx}
+      UPLOAD_DIR: /data/uploads
+      HOST: 0.0.0.0
+      PORT: 8000
+    volumes:
+      - eca360_data:/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+volumes:
+  eca360_data:
