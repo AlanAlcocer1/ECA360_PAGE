@@ -1,0 +1,136 @@
+/* Página de evento con la misma piel visual que la landing */
+.landing-galeria.evento-vista {
+  /* Mismo rojo que landing.css (--rubi / --rubi-vivo), no el #C1121F del CMS */
+  --rubi: #b11226;
+  --rubi-vivo: #e2384f;
+  --color-brand: #b11226;
+  --color-brand-dark: #8e0e1e;
+  --color-brand-light: #e2384f;
+  --color-ink: #f6f1ec;
+  --color-muted: #b8b8bc;
+  --color-surface: #211f26;
+  --color-line: rgba(184, 184, 188, 0.22);
+  --font-display: 'Cormorant Garamond', Georgia, 'Times New Roman', serif;
+  --font-sans: 'Montserrat', 'Helvetica Neue', Arial, sans-serif;
+  min-height: 100svh;
+}
+
+/* Asegurar que botones/CTA usen el rubí de landing aunque Tailwind lea otra var */
+.landing-galeria.evento-vista .bg-brand {
+  background-color: #b11226 !important;
+}
+.landing-galeria.evento-vista .hover\:bg-brand-dark:hover,
+.landing-galeria.evento-vista .bg-brand-dark {
+  background-color: #8e0e1e !important;
+}
+.landing-galeria.evento-vista .text-brand,
+.landing-galeria.evento-vista .text-brand-light {
+  color: #b11226 !important;
+}
+.landing-galeria.evento-vista .border-brand,
+.landing-galeria.evento-vista .focus\:border-brand:focus {
+  border-color: #b11226 !important;
+}
+.landing-galeria.evento-vista .border-brand\/50 {
+  border-color: rgb(177 18 38 / 0.5) !important;
+}
+.landing-galeria.evento-vista .bg-brand\/10 {
+  background-color: rgb(177 18 38 / 0.1) !important;
+}
+.landing-galeria.evento-vista .bg-brand\/20 {
+  background-color: rgb(177 18 38 / 0.2) !important;
+}
+
+.landing-galeria.evento-vista .menu {
+  position: sticky;
+  inset: auto;
+  top: 0;
+  z-index: 20;
+  background: rgba(14, 14, 16, 0.88);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--linea);
+}
+
+.landing-galeria.evento-vista .evento-cuerpo {
+  padding-block: clamp(40px, 6vw, 72px) clamp(72px, 10vw, 120px);
+}
+
+.landing-galeria.evento-vista .evento-volver {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font: 500 0.72rem/1 var(--texto);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--plata);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.landing-galeria.evento-vista .evento-volver:hover {
+  color: var(--marfil);
+}
+
+.landing-galeria.evento-vista .evento-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-top: 20px;
+  font: 400 0.85rem/1.4 var(--texto);
+  color: var(--plata);
+}
+
+.landing-galeria.evento-vista .evento-cover {
+  margin-top: 36px;
+  overflow: hidden;
+}
+
+.landing-galeria.evento-vista .evento-cover img {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+}
+
+.landing-galeria.evento-vista .evento-relacionados {
+  border-top: 1px solid var(--linea);
+  padding-block: clamp(56px, 8vw, 96px);
+  background: var(--obsidiana-2);
+}
+
+.landing-galeria.evento-vista .evento-relacionados h2 {
+  font-size: clamp(1.8rem, 3.5vw, 2.6rem);
+  font-weight: 400;
+  margin-bottom: 36px;
+}
+
+.landing-galeria.evento-vista .skeleton {
+  background: linear-gradient(90deg, #1a191e 25%, #2a2830 50%, #1a191e 75%);
+  background-size: 200% 100%;
+}
+
+/* Ajustes de bloques / comentarios pensados para fondo claro */
+.landing-galeria.evento-vista .bg-white,
+.landing-galeria.evento-vista .from-white,
+.landing-galeria.evento-vista .via-white {
+  --tw-gradient-from: rgba(246, 241, 236, 0.04) !important;
+  --tw-gradient-via: rgba(246, 241, 236, 0.04) !important;
+  background-color: rgba(246, 241, 236, 0.04) !important;
+}
+
+.landing-galeria.evento-vista input,
+.landing-galeria.evento-vista textarea,
+.landing-galeria.evento-vista select {
+  background: rgba(246, 241, 236, 0.04) !important;
+  color: var(--marfil) !important;
+  border-color: var(--linea) !important;
+}
+
+.landing-galeria.evento-vista input::placeholder,
+.landing-galeria.evento-vista textarea::placeholder {
+  color: rgba(184, 184, 188, 0.55);
+}
+
+.landing-galeria.evento-vista ::selection {
+  background: color-mix(in srgb, var(--rubi-vivo) 35%, transparent);
+  color: var(--marfil);
+}

@@ -71,6 +71,9 @@ export default function Footer() {
           <p className="mt-3 max-w-sm text-sm text-white/60">{settings.footer_text}</p>
           <div className="mt-6 flex flex-wrap gap-4 text-sm text-white/55">
             <Link to="/" className="hover:text-white">
+              Inicio
+            </Link>
+            <Link to="/#eventos" className="hover:text-white">
               Novedades | Eventos
             </Link>
             <Link to="/redes" className="hover:text-white">

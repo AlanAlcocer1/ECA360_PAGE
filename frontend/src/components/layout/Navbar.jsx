@@ -18,7 +18,8 @@ export default function Navbar() {
         <nav className="hidden md:block">
           <FocusBlurLinks
             items={[
-              { id: 'home', label: 'Novedades | Eventos', to: '/' },
+              { id: 'inicio', label: 'Inicio', to: '/' },
+              { id: 'home', label: 'Novedades | Eventos', to: '/#eventos' },
               { id: 'redes', label: 'Redes', to: '/redes' },
             ]}
           />
@@ -45,6 +46,13 @@ export default function Navbar() {
             <div className="flex flex-col gap-1 px-4 py-4">
               <Link
                 to="/"
+                className="rounded-lg px-3 py-2.5 text-sm font-medium hover:bg-surface"
+                onClick={() => setOpen(false)}
+              >
+                Inicio
+              </Link>
+              <Link
+                to="/#eventos"
                 className="rounded-lg px-3 py-2.5 text-sm font-medium hover:bg-surface"
                 onClick={() => setOpen(false)}
               >

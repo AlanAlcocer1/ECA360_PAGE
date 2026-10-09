@@ -6,16 +6,24 @@ import toast from 'react-hot-toast'
 import { commentsApi } from '../../services/api'
 import { formatDate } from '../../lib/utils'
 import { SparkleButton } from '../amicro/MicroInteractions'
+import StarRating from './StarRating'
 
 export default function CommentsSection({ eventId }) {
   const [comments, setComments] = useState([])
   const [loading, setLoading] = useState(true)
+  const [rating, setRating] = useState(0)
+  const [ratingError, setRatingError] = useState('')
   const {
     register,
     handleSubmit,
     reset,
     formState: { errors, isSubmitting },
   } = useForm()
+
+  const pickRating = (n) => {
+    setRating(n)
+    if (n >= 1) setRatingError('')
+  }
 
   const load = async () => {
     try {
@@ -33,10 +41,22 @@ export default function CommentsSection({ eventId }) {
   }, [eventId])
 
   const onSubmit = async (values) => {
+    if (!rating || rating < 1 || rating > 5) {
+      setRatingError('Elige al menos 1 estrella para publicar')
+      toast.error('Elige al menos 1 estrella para publicar')
+      return
+    }
+    setRatingError('')
     try {
-      const { data } = await commentsApi.create({ ...values, event_id: eventId })
+      const { data } = await commentsApi.create({
+        ...values,
+        event_id: eventId,
+        rating,
+      })
       setComments((prev) => [data, ...prev])
       reset()
+      setRating(0)
+      setRatingError('')
       toast.success('¡Gracias por compartir!')
     } catch {
       toast.error('Error al publicar comentario')
@@ -62,8 +82,8 @@ export default function CommentsSection({ eventId }) {
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">Tu voz cuenta</p>
             <h2 className="mt-1 font-display text-3xl font-semibold sm:text-4xl">Comparte tu experiencia</h2>
             <p className="mt-2 max-w-xl text-sm leading-relaxed text-muted sm:text-base">
-              Cuéntanos qué se sintió vivir este momento. No necesitas cuenta: solo tu nombre y lo que quieras
-              dejar en el recuerdo.
+              Cuéntanos qué se sintió vivir este momento. No necesitas cuenta: solo tu nombre, una calificación de
+              1 a 5 estrellas y lo que quieras dejar en el recuerdo.
             </p>
           </div>
         </div>
@@ -79,6 +99,17 @@ export default function CommentsSection({ eventId }) {
               className="w-full border border-line bg-white px-4 py-3 text-sm outline-none transition focus:border-brand"
             />
             {errors.name && <p className="mt-1 text-xs text-brand">{errors.name.message}</p>}
+          </div>
+          <div>
+            <label className="mb-1.5 block text-xs font-medium text-muted">Tu calificación</label>
+            <StarRating value={rating} onChange={pickRating} interactive size={26} />
+            {ratingError ? (
+              <p className="mt-1.5 text-xs text-brand">{ratingError}</p>
+            ) : (
+              <p className="mt-1.5 text-xs text-muted">
+                {rating > 0 ? `${rating} de 5 estrellas` : 'Toca las estrellas para calificar'}
+              </p>
+            )}
           </div>
           <div>
             <label className="mb-1.5 block text-xs font-medium text-muted">Tu experiencia</label>
@@ -135,6 +166,9 @@ export default function CommentsSection({ eventId }) {
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
                   <h4 className="font-semibold text-ink">{c.name}</h4>
                   <time className="text-xs text-muted">{formatDate(c.created_at)}</time>
+                </div>
+                <div className="mt-1.5">
+                  <StarRating value={c.rating ?? 5} size={14} />
                 </div>
                 <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-ink/80">{c.content}</p>
               </div>

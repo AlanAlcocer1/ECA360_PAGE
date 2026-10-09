@@ -1,12 +1,55 @@
-export function formatDate(value, options = {}) {
-  if (!value) return ''
+/**
+ * Parsea fechas de evento del API/admin.
+ * El admin guarda con toISOString() (UTC); el API a veces devuelve ISO sin "Z".
+ * Esas naive datetimes con hora se tratan como UTC para obtener el día local correcto.
+ */
+export function parseEventDate(value) {
+  if (!value) return null
+  if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value
+  if (typeof value !== 'string') return null
+
+  // Solo fecha: día de calendario local
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    const [y, m, d] = value.split('-').map(Number)
+    return new Date(y, m - 1, d, 12, 0, 0)
+  }
+
+  // ISO con zona → Date nativo
+  if (/[Zz]$/.test(value) || /[+-]\d{2}:\d{2}$/.test(value)) {
+    const date = new Date(value)
+    return Number.isNaN(date.getTime()) ? null : date
+  }
+
+  // ISO naive con hora (p. ej. 2026-10-10T03:40:00) → UTC, como toISOString()
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(value)) {
+    const date = new Date(`${value}Z`)
+    return Number.isNaN(date.getTime()) ? null : date
+  }
+
   const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? null : date
+}
+
+export function formatDate(value, options = {}) {
+  const date = parseEventDate(value)
+  if (!date) return ''
   return date.toLocaleDateString('es-MX', {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
     ...options,
   })
+}
+
+/** True si el evento cae en el día local de hoy. */
+export function isEventToday(value, ref = new Date()) {
+  const date = parseEventDate(value)
+  if (!date) return false
+  return (
+    date.getFullYear() === ref.getFullYear() &&
+    date.getMonth() === ref.getMonth() &&
+    date.getDate() === ref.getDate()
+  )
 }
 
 export function formatBytes(bytes) {

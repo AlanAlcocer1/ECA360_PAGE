@@ -20,7 +20,7 @@ export default function HireEcaFab() {
         href={HIRE_URL}
         target="_blank"
         rel="noopener noreferrer"
-        className="pointer-events-auto relative mx-auto flex w-full max-w-lg items-center gap-3 overflow-hidden rounded-2xl bg-brand px-4 py-3 text-white shadow-[0_12px_40px_-8px_rgba(193,18,31,0.65)] sm:mx-0 sm:w-auto sm:max-w-xs sm:rounded-full sm:py-2.5"
+        className="pointer-events-auto relative mx-auto flex w-full max-w-lg items-center gap-3 overflow-hidden rounded-2xl bg-[var(--rubi,#b11226)] px-4 py-3 text-white shadow-[0_12px_40px_-8px_rgba(177,18,38,0.65)] sm:mx-0 sm:w-auto sm:max-w-xs sm:rounded-full sm:py-2.5"
         initial={{ y: 80, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ type: 'spring', stiffness: 280, damping: 22, delay: 0.35 }}
@@ -35,7 +35,7 @@ export default function HireEcaFab() {
         />
         <motion.span
           aria-hidden
-          className="absolute -inset-1 rounded-2xl border-2 border-brand/50 sm:rounded-full"
+          className="absolute -inset-1 rounded-2xl border-2 border-[color:rgb(177_18_38_/_0.5)] sm:rounded-full"
           animate={{ opacity: [0.15, 0.55, 0.15], scale: [1, 1.04, 1] }}
           transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
         />

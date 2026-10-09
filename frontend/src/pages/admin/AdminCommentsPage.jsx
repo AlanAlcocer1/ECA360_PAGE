@@ -86,6 +86,7 @@ export default function AdminCommentsPage() {
                 <p className="font-medium">{c.name}</p>
                 <p className="text-xs text-muted">
                   {c.event_title || `Evento #${c.event_id}`} · {formatDate(c.created_at)}
+                  {c.rating != null ? ` · ${c.rating}/5 ★` : ''}
                 </p>
               </div>
               <span

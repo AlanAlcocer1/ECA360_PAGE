@@ -1,8 +1,9 @@
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
+import { useEffect } from 'react'
+import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import { SiteSettingsProvider, useSiteSettings } from './context/SiteSettingsContext'
 import PublicLayout from './components/layout/PublicLayout'
-import HomePage from './pages/HomePage'
+import LandingPage from './pages/LandingPage'
 import EventPage from './pages/EventPage'
 import SocialsPage from './pages/SocialsPage'
 import NotFoundPage from './pages/NotFoundPage'
@@ -28,15 +29,32 @@ function AppToaster() {
   )
 }
 
+/** Normaliza /ADMIN → /admin para que el login siempre abra igual. */
+function CanonicalAdminPath() {
+  const location = useLocation()
+  const navigate = useNavigate()
+  useEffect(() => {
+    const path = location.pathname
+    if (!/^\/admin/i.test(path)) return
+    const lower = path.replace(/^\/admin/i, '/admin')
+    if (lower !== path) {
+      navigate({ pathname: lower, search: location.search, hash: location.hash }, { replace: true })
+    }
+  }, [location.pathname, location.search, location.hash, navigate])
+  return null
+}
+
 export default function App() {
   return (
     <SiteSettingsProvider>
       <BrowserRouter>
         <AppToaster />
+        <CanonicalAdminPath />
         <Routes>
+          <Route index element={<LandingPage />} />
+          <Route path="eventos" element={<Navigate to={{ pathname: '/', hash: 'eventos' }} replace />} />
+          <Route path="evento/:slug" element={<EventPage />} />
           <Route element={<PublicLayout />}>
-            <Route index element={<HomePage />} />
-            <Route path="evento/:slug" element={<EventPage />} />
             <Route path="redes" element={<SocialsPage />} />
             <Route path="*" element={<NotFoundPage />} />
           </Route>

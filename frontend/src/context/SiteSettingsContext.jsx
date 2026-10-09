@@ -2,7 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import { settingsApi, mediaUrl } from '../services/api'
 
 export const DEFAULT_SETTINGS = {
-  site_name: 'ECA360',
+  site_name: 'ECA MID',
   logo_url: null,
   favicon_url: null,
   hero_eyebrow: 'ECA360',
@@ -75,9 +75,9 @@ export function useSiteSettings() {
   return useContext(SiteSettingsContext)
 }
 
-export function BrandMark({ className = '', nameClassName = '', showName = true }) {
+export function BrandMark({ className = '', nameClassName = '', showName = true, name: nameProp }) {
   const { settings } = useSiteSettings()
-  const name = settings.site_name || 'ECA360'
+  const name = nameProp || settings.site_name || 'ECA MID'
 
   if (settings.logo_url) {
     return (

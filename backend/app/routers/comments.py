@@ -16,9 +16,11 @@ def _to_out(c: Comment) -> CommentOut:
         event_id=c.event_id,
         name=c.name,
         content=c.content,
+        rating=getattr(c, "rating", None) or 5,
         approved=c.approved,
         created_at=c.created_at,
         event_title=c.event.title if c.event else None,
+        event_slug=c.event.slug if c.event else None,
     )
 
 
@@ -31,6 +33,7 @@ def create_comment(payload: CommentCreate, db: Session = Depends(get_db)):
         event_id=payload.event_id,
         name=payload.name.strip(),
         content=payload.content.strip(),
+        rating=payload.rating,
         approved=True,
     )
     db.add(comment)
@@ -47,6 +50,24 @@ def comments_by_event(event_id: int, db: Session = Depends(get_db)):
         .options(joinedload(Comment.event))
         .filter(Comment.event_id == event_id, Comment.approved.is_(True))
         .order_by(Comment.created_at.desc())
+        .all()
+    )
+    return [_to_out(c) for c in comments]
+
+
+@router.get("/recent", response_model=list[CommentOut])
+def comments_recent(
+    limit: int = Query(24, ge=1, le=60),
+    db: Session = Depends(get_db),
+):
+    """Comentarios aprobados de eventos publicados (para marquesinas públicas)."""
+    comments = (
+        db.query(Comment)
+        .options(joinedload(Comment.event))
+        .join(Event, Event.id == Comment.event_id)
+        .filter(Comment.approved.is_(True), Event.status == "published")
+        .order_by(Comment.created_at.desc())
+        .limit(limit)
         .all()
     )
     return [_to_out(c) for c in comments]

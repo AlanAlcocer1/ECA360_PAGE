@@ -54,6 +54,7 @@ export const eventsApi = {
 
 export const commentsApi = {
   byEvent: (eventId) => api.get(`/comments/event/${eventId}`),
+  recent: (params) => api.get('/comments/recent', { params }),
   create: (data) => api.post('/comments', data),
   adminList: (params) => api.get('/comments/admin/list', { params }),
   approve: (id) => api.patch(`/comments/${id}/approve`),

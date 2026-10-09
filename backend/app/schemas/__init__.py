@@ -101,6 +101,7 @@ class CommentCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=120)
     content: str = Field(..., min_length=1, max_length=2000)
     event_id: int
+    rating: int = Field(5, ge=1, le=5)
 
 
 class CommentOut(BaseModel):
@@ -109,9 +110,11 @@ class CommentOut(BaseModel):
     event_id: int
     name: str
     content: str
+    rating: int = 5
     approved: bool
     created_at: datetime
     event_title: Optional[str] = None
+    event_slug: Optional[str] = None
 
 
 class CommentPaginated(BaseModel):
