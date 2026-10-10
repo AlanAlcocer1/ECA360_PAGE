@@ -9,7 +9,11 @@ class Settings(BaseSettings):
     admin_password: str = "eca360admin"
     host: str = "0.0.0.0"
     port: int = 8000
-    cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
+    cors_origins: str = (
+        "http://localhost:5173,http://127.0.0.1:5173,"
+        "https://eca360-page.pages.dev,"
+        "https://eca360.com.mx,https://www.eca360.com.mx"
+    )
     upload_dir: str = "uploads"
     max_image_size_mb: int = 10
     max_video_size_mb: int = 200

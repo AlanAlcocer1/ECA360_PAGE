@@ -23,6 +23,7 @@ ENV DATABASE_URL=sqlite:////data/eca360.db
 ENV UPLOAD_DIR=/data/uploads
 ENV HOST=0.0.0.0
 ENV PORT=8000
+ENV CORS_ORIGINS=https://eca360-page.pages.dev,https://eca360.com.mx,https://www.eca360.com.mx,http://localhost:5173,http://127.0.0.1:5173
 
 EXPOSE 8000
 

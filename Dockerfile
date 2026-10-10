@@ -1,0 +1,32 @@
+# Dockerfile por defecto para Coolify (API).
+# El canónico sigue en deploy/Dockerfile.api — mantén ambos alineados.
+FROM python:3.12-slim
+
+WORKDIR /app
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libjpeg62-turbo \
+    zlib1g \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY backend/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY backend/app ./app
+COPY backend/alembic ./alembic
+COPY backend/alembic.ini ./alembic.ini
+COPY deploy/entrypoint.api.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh \
+    && mkdir -p /data/uploads/images /data/uploads/videos /data/uploads/thumbnails
+
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONPATH=/app
+ENV DATABASE_URL=sqlite:////data/eca360.db
+ENV UPLOAD_DIR=/data/uploads
+ENV HOST=0.0.0.0
+ENV PORT=8000
+ENV CORS_ORIGINS=https://eca360-page.pages.dev,https://eca360.com.mx,https://www.eca360.com.mx,http://localhost:5173,http://127.0.0.1:5173
+
+EXPOSE 8000
+
+ENTRYPOINT ["/entrypoint.sh"]

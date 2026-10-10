@@ -3,8 +3,9 @@ import axios from 'axios'
 /**
  * Base del API:
  * - DEV sin VITE_API_URL → http://localhost:8000
- * - PROD (build) → .env.production → https://api.eca360.com.mx
+ * - PROD (build) → .env.production (p. ej. /__api same-origin proxy)
  * - Override puntual → VITE_API_URL en el entorno de build
+ * Relative paths (/, /__api) stay same-origin; absolute https://… hit the API host.
  */
 const envUrl = import.meta.env.VITE_API_URL
 const API_URL =
@@ -12,7 +13,7 @@ const API_URL =
     ? String(envUrl).trim().replace(/\/$/, '')
     : import.meta.env.DEV
       ? 'http://localhost:8000'
-      : 'https://api.eca360.com.mx'
+      : '/__api'
 
 export function getApiBaseUrl() {
   return API_URL

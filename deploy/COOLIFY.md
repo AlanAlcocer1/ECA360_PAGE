@@ -172,7 +172,7 @@ Resource → **Environment Variables** (o .env):
 ADMIN_PASSWORD=TU_CLAVE_FUERTE
 DATABASE_URL=sqlite:////data/eca360.db
 UPLOAD_DIR=/data/uploads
-CORS_ORIGINS=https://eca360.com.mx,https://www.eca360.com.mx
+CORS_ORIGINS=https://eca360-page.pages.dev,https://eca360.com.mx,https://www.eca360.com.mx,http://localhost:5173,http://127.0.0.1:5173
 APP_URL=https://eca360.com.mx
 API_URL=https://api.eca360.com.mx
 APP_NAME=ECA MID
@@ -184,7 +184,8 @@ Notas:
 
 - `DATABASE_URL` lleva **cuatro** slashes: `sqlite:////data/eca360.db` (ruta absoluta en Linux).
 - Cuando tengas el front en Cloudflare, `CORS_ORIGINS` debe incluir exactamente esas URLs (con `https://`).
-- Si pruebas el front en `*.pages.dev`, agrégalo también a `CORS_ORIGINS`.
+- Incluye `https://eca360-page.pages.dev` mientras el front viva ahí (y cualquier preview `https://*.eca360-page.pages.dev` si lo usas).
+- Tras cambiar `CORS_ORIGINS` en Coolify, haz **Redeploy** (el proceso ya corriendo no releerá el `.env`).
 
 ### 3.6 Healthcheck (opcional pero útil)
 

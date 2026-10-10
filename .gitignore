@@ -9,4 +9,5 @@ __pycache__/
 deploy/.env
 backend/*.db
 backend/uploads/
+backup-vps/
 frontend/dist/
