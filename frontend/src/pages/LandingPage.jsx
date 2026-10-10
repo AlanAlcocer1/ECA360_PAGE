@@ -233,7 +233,7 @@ export default function LandingPage() {
 
       <section className="cierre">
         <div className="envoltura">
-          <LogoMark />
+          <LogoMark className="marca-logo" />
           <h2>
             Momentos que se viven, <em>recuerdos que permanecen.</em>
           </h2>
