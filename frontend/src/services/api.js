@@ -58,6 +58,7 @@ export const eventsApi = {
   hide: (id) => api.post(`/events/${id}/hide`),
   templates: () => api.get('/events/templates'),
   years: () => api.get('/events/years'),
+  muralPhotos: (params) => api.get('/events/mural-photos', { params }),
   stats: () => api.get('/events/admin/stats'),
 }
 

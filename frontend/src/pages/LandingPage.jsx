@@ -29,8 +29,16 @@ function LogoMark({ className = '' }) {
   return <span className={`marca-logo ${className}`}>ECA</span>
 }
 
-/** Construye el pool del muro: covers reales; si hay pocos, se repiten. */
-function buildMuroPiezas(events) {
+/** Pool del muro: fotos individuales de galería/carrusel; fallback a covers o muestra. */
+function buildMuroPiezas(photos, events) {
+  const fromGallery = (photos || [])
+    .filter((p) => p.url)
+    .map((p) => ({
+      titulo: p.title || 'Evento',
+      foto: mediaUrl(p.url),
+      muestra: false,
+    }))
+
   const covers = (events || [])
     .filter((e) => e.cover_image)
     .map((e) => ({
@@ -39,13 +47,13 @@ function buildMuroPiezas(events) {
       muestra: false,
     }))
 
-  const pool = covers.length ? covers : EVENTOS_MUESTRA
-  const minNeeded = 6
+  const pool = fromGallery.length ? fromGallery : covers.length ? covers : EVENTOS_MUESTRA
+  const minNeeded = 24
   const piezas = []
   while (piezas.length < minNeeded) {
     piezas.push(...pool)
   }
-  return piezas
+  return piezas.slice(0, Math.max(minNeeded, pool.length))
 }
 
 export default function LandingPage() {
@@ -57,12 +65,17 @@ export default function LandingPage() {
 
   const grupos = useMemo(() => [...new Set(PAQUETES.map((p) => p.grupo))], [])
   const [primera, ...restoBlog] = BLOG_IDEAS
+  const [muroPhotos, setMuroPhotos] = useState([])
   const [muroEvents, setMuroEvents] = useState([])
   const [redesOpen, setRedesOpen] = useState(false)
   const openRedes = useCallback(() => setRedesOpen(true), [])
   const closeRedes = useCallback(() => setRedesOpen(false), [])
 
   useEffect(() => {
+    eventsApi
+      .muralPhotos({ limit: 48, per_event: 10 })
+      .then(({ data }) => setMuroPhotos(Array.isArray(data) ? data : []))
+      .catch(() => {})
     eventsApi
       .list({ page: 1, page_size: 24 })
       .then(({ data }) => setMuroEvents(data.items || []))
@@ -78,12 +91,15 @@ export default function LandingPage() {
     return () => window.clearTimeout(t)
   }, [])
 
-  const muroPiezas = useMemo(() => buildMuroPiezas(muroEvents), [muroEvents])
+  const muroPiezas = useMemo(
+    () => buildMuroPiezas(muroPhotos, muroEvents),
+    [muroPhotos, muroEvents],
+  )
 
   const muroColumnas = useMemo(
     () =>
       Array.from({ length: 4 }, (_, c) => {
-        const piezas = Array.from({ length: 6 }, (_, i) => muroPiezas[(c * 2 + i) % muroPiezas.length])
+        const piezas = Array.from({ length: 6 }, (_, i) => muroPiezas[(c * 3 + i) % muroPiezas.length])
         return [...piezas, ...piezas]
       }),
     [muroPiezas],

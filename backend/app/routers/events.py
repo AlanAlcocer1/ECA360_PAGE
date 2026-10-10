@@ -120,6 +120,16 @@ def get_years(db: Session = Depends(get_db)):
     return [y[0] for y in years]
 
 
+@router.get("/mural-photos")
+def get_mural_photos(
+    limit: int = Query(48, ge=6, le=120),
+    per_event: int = Query(10, ge=1, le=24),
+    db: Session = Depends(get_db),
+):
+    """Fotos individuales (galería/carrusel) para el muro de la landing — no solo covers."""
+    return event_service.mural_photos(db, limit=limit, per_event=per_event)
+
+
 @router.get("/slug/{slug}", response_model=EventOut)
 def get_by_slug(slug: str, db: Session = Depends(get_db)):
     event = event_service.get_event_by_slug(db, slug, published_only=True)

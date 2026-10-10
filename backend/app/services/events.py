@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+import random
 from datetime import datetime
-from typing import Optional
+from typing import Any, Optional
 
 from slugify import slugify
 from sqlalchemy import func, or_
@@ -10,6 +11,73 @@ from sqlalchemy.orm import Session, joinedload
 from app.models import Comment, Event, EventBlock, MediaFile
 from app.schemas import EventCreate, EventUpdate
 from app.services.templates import get_template_blocks
+
+
+def _block_image_urls(content: dict[str, Any] | None, block_type: str) -> list[str]:
+    """Fotos individuales de un bloque (carousel / gallery / image), no el cover."""
+    c = content or {}
+    urls: list[str] = []
+    if block_type == "image":
+        u = c.get("url") or c.get("image")
+        if u:
+            urls.append(u)
+    elif block_type == "gallery":
+        for img in c.get("images") or []:
+            u = img if isinstance(img, str) else (img.get("url") or img.get("src"))
+            if u:
+                urls.append(u)
+    elif block_type == "carousel":
+        for item in c.get("items") or []:
+            kind = item.get("type") or "image"
+            if kind != "image":
+                continue
+            u = item.get("url") or item.get("src")
+            if u:
+                urls.append(u)
+    return urls
+
+
+def mural_photos(db: Session, *, limit: int = 48, per_event: int = 10) -> list[dict[str, str]]:
+    """Muestra variada de fotos de galería/carrusel de eventos publicados."""
+    events = (
+        db.query(Event)
+        .options(joinedload(Event.blocks))
+        .filter(Event.status == "published")
+        .order_by(Event.event_date.desc(), Event.created_at.desc())
+        .all()
+    )
+    buckets: list[list[dict[str, str]]] = []
+    for event in events:
+        urls: list[str] = []
+        for block in sorted(event.blocks, key=lambda b: b.position):
+            urls.extend(_block_image_urls(block.content, block.type))
+        # Dedup preservando orden
+        seen: set[str] = set()
+        unique = []
+        for u in urls:
+            if u in seen:
+                continue
+            seen.add(u)
+            unique.append(u)
+        if not unique:
+            continue
+        random.shuffle(unique)
+        sample = unique[:per_event]
+        buckets.append([{"url": u, "title": event.title, "slug": event.slug} for u in sample])
+
+    if not buckets:
+        return []
+
+    # Round-robin entre eventos para que el muro no sea de uno solo
+    mixed: list[dict[str, str]] = []
+    while len(mixed) < limit and any(buckets):
+        for bucket in buckets:
+            if len(mixed) >= limit:
+                break
+            if bucket:
+                mixed.append(bucket.pop(0))
+        buckets = [b for b in buckets if b]
+    return mixed
 
 
 def unique_slug(db: Session, title: str, exclude_id: Optional[int] = None) -> str:
