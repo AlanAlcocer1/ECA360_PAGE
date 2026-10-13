@@ -93,14 +93,57 @@
 
 .landing-galeria.evento-vista .evento-relacionados {
   border-top: 1px solid var(--linea);
-  padding-block: clamp(56px, 8vw, 96px);
+  padding-block: clamp(48px, 7vw, 80px);
   background: var(--obsidiana-2);
 }
 
 .landing-galeria.evento-vista .evento-relacionados h2 {
-  font-size: clamp(1.8rem, 3.5vw, 2.6rem);
+  font-size: clamp(1.5rem, 2.8vw, 2.1rem);
   font-weight: 400;
-  margin-bottom: 36px;
+  margin-bottom: 28px;
+}
+
+/* Grilla compacta: miniaturas, no covers a pantalla completa */
+.landing-galeria.evento-vista .evento-relacionados__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1.1rem 0.85rem;
+}
+
+@media (min-width: 900px) {
+  .landing-galeria.evento-vista .evento-relacionados__grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1.35rem 1.1rem;
+  }
+}
+
+.landing-galeria.evento-vista .evento-relacionados .event-card__media {
+  aspect-ratio: 1 / 1;
+}
+
+.landing-galeria.evento-vista .evento-relacionados .event-card__body {
+  padding-top: 0.65rem;
+}
+
+.landing-galeria.evento-vista .evento-relacionados .event-card__body h3 {
+  font-size: 1rem !important;
+  line-height: 1.25;
+}
+
+.landing-galeria.evento-vista .evento-relacionados .event-card__body p {
+  display: none;
+}
+
+.landing-galeria.evento-vista .evento-relacionados .event-card__body .mt-3 {
+  margin-top: 0.4rem;
+  font-size: 0.7rem;
+}
+
+.landing-galeria.evento-vista .evento-relacionados .event-card__badge {
+  top: 8px;
+  left: 8px;
+  padding: 0.4em 0.65em;
+  font-size: 0.58rem;
 }
 
 .landing-galeria.evento-vista .skeleton {

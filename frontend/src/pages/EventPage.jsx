@@ -169,12 +169,10 @@ export default function EventPage() {
             <section className="evento-relacionados">
               <div className="envoltura">
                 <h2>Eventos relacionados</h2>
-                <div className="events-browse events-browse--dark">
-                  <div className="events-browse__grid">
-                    {related.map((ev, i) => (
-                      <EventCard key={ev.id} event={ev} index={i} tone="dark" />
-                    ))}
-                  </div>
+                <div className="evento-relacionados__grid">
+                  {related.map((ev, i) => (
+                    <EventCard key={ev.id} event={ev} index={i} tone="dark" featured={false} />
+                  ))}
                 </div>
               </div>
             </section>
