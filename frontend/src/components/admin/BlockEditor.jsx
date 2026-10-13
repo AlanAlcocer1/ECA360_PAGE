@@ -518,7 +518,8 @@ function BlockSettings({ block, onChange }) {
                 </button>
               </div>
               <p className="mt-1 text-xs text-muted">
-                Fotos o videos: curl -F &quot;file=@foto.jpg&quot; {ingestUrl}
+                Fotos o videos (si mandas video + thumb.jpg juntos, el thumb es el poster): curl -F
+                &quot;file=@processed.mp4&quot; -F &quot;file=@thumb.jpg&quot; {ingestUrl}
               </p>
             </Field>
           ) : null}
