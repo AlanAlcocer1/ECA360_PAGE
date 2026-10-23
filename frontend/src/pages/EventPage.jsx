@@ -157,7 +157,17 @@ export default function EventPage() {
               )}
 
               <div style={{ marginTop: event.blocks?.some((b) => b.type === 'hero') ? 0 : 48 }}>
-                <BlockRenderer blocks={event.blocks || []} />
+                <BlockRenderer
+                  blocks={event.blocks || []}
+                  eventId={event.id}
+                  eventTitle={event.title}
+                  onLeaveReview={() => {
+                    document.getElementById('comentarios')?.scrollIntoView({
+                      behavior: 'smooth',
+                      block: 'start',
+                    })
+                  }}
+                />
                 <div style={{ marginTop: 64 }}>
                   <CommentsSection eventId={event.id} />
                 </div>

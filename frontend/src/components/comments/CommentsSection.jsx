@@ -64,7 +64,7 @@ export default function CommentsSection({ eventId }) {
   }
 
   return (
-    <section className="relative overflow-hidden border-t border-line pt-14">
+    <section id="comentarios" className="relative scroll-mt-24 overflow-hidden border-t border-line pt-14">
       <div className="pointer-events-none absolute -right-20 top-0 h-56 w-56 rounded-full bg-brand/[0.07] blur-3xl" />
 
       <motion.div
