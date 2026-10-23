@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Check, Download, Play, X } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { mediaUrl } from '../../services/api'
+import { getApiBaseUrl, mediaUrl } from '../../services/api'
 
 function itemSrc(item) {
   return mediaUrl(item.url || item.src)
@@ -13,19 +13,35 @@ function itemThumb(item) {
   return itemSrc(item)
 }
 
-function fileName(item, i) {
+function fileName(item, i, { asPng = false } = {}) {
   const raw = item.alt || item.caption || (item.type === 'video' ? `video-${i + 1}` : `foto-${i + 1}`)
-  const base = String(raw).replace(/[^\w.\-áéíóúñÁÉÍÓÚÑ ]+/g, '').trim() || `media-${i + 1}`
-  const url = item.url || item.src || ''
-  const extMatch = url.match(/\.(jpe?g|png|webp|gif|mp4|mov|webm)(\?|$)/i)
-  const ext = extMatch ? `.${extMatch[1].toLowerCase()}` : item.type === 'video' ? '.mp4' : '.jpg'
-  return base.toLowerCase().endsWith(ext) ? base : `${base}${ext}`
+  let base = String(raw).replace(/[^\w.\-áéíóúñÁÉÍÓÚÑ ]+/g, '').trim() || `media-${i + 1}`
+  // Quitar extensión previa del alt (processed.webp, thumb.jpg, …)
+  base = base.replace(/\.(jpe?g|png|webp|gif|mp4|mov|webm)$/i, '')
+  if (item.type === 'video') {
+    const url = item.url || item.src || ''
+    const extMatch = url.match(/\.(mp4|mov|webm)(\?|$)/i)
+    const ext = extMatch ? `.${extMatch[1].toLowerCase()}` : '.mp4'
+    return `${base}${ext}`
+  }
+  return `${base}${asPng ? '.png' : '.webp'}`
 }
 
 async function fetchBlob(url) {
   const res = await fetch(url)
   if (!res.ok) throw new Error('No se pudo descargar')
   return res.blob()
+}
+
+/** Fotos: el API convierte WebP → PNG. Videos: archivo original. */
+function downloadUrlFor(item) {
+  const pathOrUrl = item.url || item.src || ''
+  if (item.type === 'video') return itemSrc(item)
+  const api = getApiBaseUrl()
+  const params = new URLSearchParams({ url: pathOrUrl })
+  const stem = fileName(item, 0, { asPng: true }).replace(/\.png$/i, '')
+  if (stem) params.set('filename', stem)
+  return `${api}/download?${params.toString()}`
 }
 
 function triggerDownload(blob, name) {
@@ -106,8 +122,8 @@ export default function MediaGalleryPicker({
 
   const downloadOne = async (i) => {
     const item = list[i]
-    const blob = await fetchBlob(itemSrc(item))
-    triggerDownload(blob, fileName(item, i))
+    const blob = await fetchBlob(downloadUrlFor(item))
+    triggerDownload(blob, fileName(item, i, { asPng: item.type !== 'video' }))
   }
 
   const downloadSelected = async () => {

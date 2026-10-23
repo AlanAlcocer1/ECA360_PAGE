@@ -7,7 +7,7 @@ from fastapi.staticfiles import StaticFiles
 from app.config import get_settings
 from app.database import Base, engine
 from app.db_migrate import ensure_sqlite_columns
-from app.routers import admin, comments, events, ingest
+from app.routers import admin, comments, download, events, ingest
 from app.utils.media import ensure_upload_dirs
 
 settings = get_settings()
@@ -43,6 +43,7 @@ app.include_router(events.router)
 app.include_router(comments.router)
 app.include_router(admin.router)
 app.include_router(ingest.router)
+app.include_router(download.router)
 
 
 @app.get("/health")

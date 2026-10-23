@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     upload_dir: str = "uploads"
     max_image_size_mb: int = 10
     max_video_size_mb: int = 200
+    webp_quality: int = 85
     app_name: str = "ECA360 Eventos"
     app_url: str = "http://localhost:5173"
     api_url: str = "http://localhost:8000"
