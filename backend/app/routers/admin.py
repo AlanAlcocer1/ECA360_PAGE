@@ -1,14 +1,24 @@
+import json
+
 from fastapi import APIRouter, Depends, File, UploadFile
+from fastapi.responses import StreamingResponse
+from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import MediaFile
 from app.schemas import LoginRequest, LoginResponse, MediaOut, SiteSettings, SiteSettingsUpdate
 from app.services import site as site_service
+from app.services.r2_migrate import iter_migration, migration_preview
 from app.utils.auth import make_persistent_token, require_admin, verify_password
 from app.utils.media import save_upload
 
 router = APIRouter(tags=["admin"])
+
+
+class MigrateR2Request(BaseModel):
+    delete_local: bool = Field(False, description="Borrar del disco tras subir OK a R2")
+    dry_run: bool = Field(False, description="Solo listar / simular sin escribir")
 
 
 @router.post("/admin/login", response_model=LoginResponse)
@@ -62,3 +72,28 @@ async def upload_file(
 @router.get("/media", response_model=list[MediaOut])
 def list_media(db: Session = Depends(get_db), _: str = Depends(require_admin)):
     return db.query(MediaFile).order_by(MediaFile.created_at.desc()).limit(200).all()
+
+
+@router.get("/admin/migrate-r2/preview")
+def migrate_r2_preview(_: str = Depends(require_admin)):
+    """Resumen de archivos locales y estado R2 (antes de migrar)."""
+    return migration_preview()
+
+
+@router.post("/admin/migrate-r2/run")
+def migrate_r2_run(payload: MigrateR2Request, _: str = Depends(require_admin)):
+    """Ejecuta migración y hace stream NDJSON con el progreso archivo a archivo."""
+
+    def event_stream():
+        apply = not payload.dry_run
+        for ev in iter_migration(apply=apply, delete_local=payload.delete_local and apply):
+            yield json.dumps(ev, ensure_ascii=False) + "\n"
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="application/x-ndjson",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        },
+    )

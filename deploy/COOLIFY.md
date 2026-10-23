@@ -210,28 +210,22 @@ Los archivos ya existentes en `/data/uploads` se migran con el script de abajo (
 
 ### 3.5.2 Migrar uploads del VPS → R2
 
-1. Backup rápido de la BD (recomendado):
-   ```bash
-   docker exec CONTAINER cp /data/eca360.db /data/eca360.db.bak-pre-r2
-   ```
-2. Redeploy con la imagen que incluye `scripts/migrate_uploads_to_r2.py`.
-3. Dry-run (solo lista):
-   ```bash
-   docker exec -it CONTAINER python scripts/migrate_uploads_to_r2.py
-   ```
-4. Subir a R2 + reescribir URLs en BD:
-   ```bash
-   docker exec -it CONTAINER python scripts/migrate_uploads_to_r2.py --apply
-   ```
-5. Cuando confirmes que las fotos abren en `pub-….r2.dev`, liberar disco:
-   ```bash
-   docker exec -it CONTAINER python scripts/migrate_uploads_to_r2.py --apply --delete-local
-   ```
+**Recomendado (UI):** Admin → **Migrar a R2**  
+- Muestra cuántos archivos hay en disco  
+- **Simular** (dry-run) o **Migrar** con confirmación  
+- Log en vivo (archivo subido / ya en R2 / borrado)  
+- Checkbox para eliminar del servidor al terminar  
 
-El script:
+**CLI (opcional):**
+```bash
+docker exec CONTAINER cp /data/eca360.db /data/eca360.db.bak-pre-r2
+docker exec -it CONTAINER python scripts/migrate_uploads_to_r2.py --apply --delete-local
+```
+
+La migración:
 - Sube `images/`, `videos/`, `thumbnails/` con la misma ruta como key en R2
-- Actualiza `media_files`, `events.cover_image` / `og_image`, `site_config`, y JSON de `event_blocks`
-- Con `--delete-local` borra del volume solo lo que ya está en R2
+- Actualiza `media_files`, covers, `site_config` y JSON de `event_blocks`
+- Solo borra del disco lo que ya está en R2 (si lo pediste)
 
 ### 3.6 Healthcheck (opcional pero útil)
 
