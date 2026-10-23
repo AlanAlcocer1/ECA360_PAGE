@@ -1,4 +1,5 @@
-import { motion } from 'framer-motion'
+import { useEffect, useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { SOCIAL_LINKS } from '../lib/socials'
 
 const whatsapp = SOCIAL_LINKS.find((s) => s.id === 'whatsapp')
@@ -13,60 +14,75 @@ function WhatsAppMark({ className = '' }) {
   )
 }
 
+/** En cel: círculo WhatsApp. En desktop: pill con texto. Se oculta si la galería fullscreen está abierta. */
 export default function HireEcaFab() {
+  const [galleryOpen, setGalleryOpen] = useState(false)
+
+  useEffect(() => {
+    const sync = () => {
+      setGalleryOpen(document.body.classList.contains('eca-gallery-open'))
+    }
+    sync()
+    const obs = new MutationObserver(sync)
+    obs.observe(document.body, { attributes: true, attributeFilter: ['class'] })
+    return () => obs.disconnect()
+  }, [])
+
   return (
-    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-[90] px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:inset-x-auto sm:right-5 sm:px-0">
-      <motion.a
-        href={HIRE_URL}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="pointer-events-auto relative mx-auto flex w-full max-w-lg items-center gap-3 overflow-hidden rounded-2xl bg-[var(--rubi,#b11226)] px-4 py-3 text-white shadow-[0_12px_40px_-8px_rgba(177,18,38,0.65)] sm:mx-0 sm:w-auto sm:max-w-xs sm:rounded-full sm:py-2.5"
-        initial={{ y: 80, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ type: 'spring', stiffness: 280, damping: 22, delay: 0.35 }}
-        whileTap={{ scale: 0.97 }}
-        whileHover={{ scale: 1.02 }}
-      >
-        <motion.span
-          aria-hidden
-          className="pointer-events-none absolute inset-0 bg-gradient-to-r from-transparent via-white/25 to-transparent"
-          animate={{ x: ['-120%', '140%'] }}
-          transition={{ duration: 2.4, repeat: Infinity, repeatDelay: 2.2, ease: 'easeInOut' }}
-        />
-        <motion.span
-          aria-hidden
-          className="absolute -inset-1 rounded-2xl border-2 border-[color:rgb(177_18_38_/_0.5)] sm:rounded-full"
-          animate={{ opacity: [0.15, 0.55, 0.15], scale: [1, 1.04, 1] }}
-          transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
-        />
-
-        <span className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-white text-[#25D366] shadow-inner sm:h-10 sm:w-10 sm:rounded-full">
-          <motion.span
-            animate={{ scale: [1, 1.12, 1] }}
-            transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
-          >
-            <WhatsAppMark className="h-6 w-6" />
-          </motion.span>
-        </span>
-
-        <span className="relative min-w-0 flex-1 text-left">
-          <span className="block text-[10px] font-semibold uppercase tracking-[0.12em] text-white/75">
-            Tu evento también puede verse así
-          </span>
-          <span className="block text-[15px] font-semibold leading-tight sm:text-sm">
-            Quiero contratar ECA
-          </span>
-        </span>
-
-        <motion.span
-          aria-hidden
-          className="relative hidden text-lg font-light text-white/80 sm:inline"
-          animate={{ x: [0, 4, 0] }}
-          transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}
+    <AnimatePresence>
+      {!galleryOpen && (
+        <motion.div
+          className="pointer-events-none fixed bottom-[max(1rem,env(safe-area-inset-bottom))] right-3 z-[90] sm:right-5"
+          initial={{ y: 64, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          exit={{ y: 24, opacity: 0 }}
+          transition={{ type: 'spring', stiffness: 280, damping: 22, delay: 0.2 }}
         >
-          →
-        </motion.span>
-      </motion.a>
-    </div>
+          {/* Móvil: solo círculo WhatsApp */}
+          <motion.a
+            href={HIRE_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label="Contratar ECA por WhatsApp"
+            className="pointer-events-auto relative flex h-14 w-14 items-center justify-center rounded-full bg-[#25D366] text-white shadow-[0_10px_28px_-6px_rgba(37,211,102,0.65)] sm:hidden"
+            whileTap={{ scale: 0.94 }}
+          >
+            <motion.span
+              aria-hidden
+              className="absolute inset-0 rounded-full border-2 border-[#25D366]/60"
+              animate={{ opacity: [0.2, 0.7, 0.2], scale: [1, 1.12, 1] }}
+              transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+            />
+            <WhatsAppMark className="relative h-7 w-7" />
+          </motion.a>
+
+          {/* Desktop: pill con texto */}
+          <motion.a
+            href={HIRE_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="pointer-events-auto relative hidden max-w-xs items-center gap-3 overflow-hidden rounded-full bg-[var(--rubi,#b11226)] px-4 py-2.5 text-white shadow-[0_12px_40px_-8px_rgba(177,18,38,0.65)] sm:flex"
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.97 }}
+          >
+            <motion.span
+              aria-hidden
+              className="pointer-events-none absolute inset-0 bg-gradient-to-r from-transparent via-white/25 to-transparent"
+              animate={{ x: ['-120%', '140%'] }}
+              transition={{ duration: 2.4, repeat: Infinity, repeatDelay: 2.2, ease: 'easeInOut' }}
+            />
+            <span className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-[#25D366]">
+              <WhatsAppMark className="h-6 w-6" />
+            </span>
+            <span className="relative min-w-0 flex-1 text-left">
+              <span className="block text-[10px] font-semibold uppercase tracking-[0.12em] text-white/75">
+                Tu evento también puede verse así
+              </span>
+              <span className="block text-sm font-semibold leading-tight">Quiero contratar ECA</span>
+            </span>
+          </motion.a>
+        </motion.div>
+      )}
+    </AnimatePresence>
   )
 }
