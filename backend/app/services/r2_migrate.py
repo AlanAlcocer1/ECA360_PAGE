@@ -1,8 +1,13 @@
-"""Migración de /uploads locales → Cloudflare R2 (eventos para UI/CLI)."""
+"""Migración de /uploads locales → Cloudflare R2 (eventos para UI/CLI).
+
+Las imágenes raster (jpg/png/webp) se reconvierten a WebP como en uploads nuevos;
+GIF y video se suben tal cual.
+"""
 
 from __future__ import annotations
 
 import mimetypes
+import tempfile
 import threading
 from collections.abc import Iterator
 from pathlib import Path
@@ -13,9 +18,11 @@ from sqlalchemy.orm.attributes import flag_modified
 from app.config import get_settings
 from app.database import SessionLocal
 from app.models import Event, EventBlock, MediaFile, SiteConfig
+from app.utils.media import IMAGE_EXTS, compress_to_webp, make_thumbnail_webp
 from app.utils.r2 import get_r2_client, r2_public_url, upload_file_path
 
 UPLOAD_PREFIX = "/uploads/"
+CONVERT_EXTS = {".jpg", ".jpeg", ".png", ".webp"}
 _migrate_lock = threading.Lock()
 
 
@@ -41,7 +48,7 @@ def collect_local_files(upload_root: Path) -> list[Path]:
         return []
     files: list[Path] = []
     for p in upload_root.rglob("*"):
-        if p.is_file() and not p.name.startswith("."):
+        if p.is_file() and not p.name.startswith(".") and not p.name.startswith("_raw_"):
             files.append(p)
     return sorted(files)
 
@@ -54,6 +61,37 @@ def object_exists(key: str) -> bool:
         return True
     except Exception:
         return False
+
+
+def plan_dest(path: Path, upload_root: Path) -> dict[str, Any]:
+    """Decide key destino, si convierte a WebP y si genera thumbnail."""
+    old_key = local_path_to_key(path, upload_root)
+    old_url = key_to_old_url(old_key)
+    ext = path.suffix.lower()
+    top = old_key.split("/", 1)[0] if "/" in old_key else ""
+    is_image = ext in IMAGE_EXTS
+    keep_gif = ext == ".gif"
+    convert = is_image and not keep_gif and ext in CONVERT_EXTS
+
+    if convert:
+        new_key = str(Path(old_key).with_suffix(".webp"))
+        content_type = "image/webp"
+    else:
+        new_key = old_key
+        content_type = guess_content_type(path)
+
+    make_thumb = convert and top == "images"
+    return {
+        "old_key": old_key,
+        "new_key": new_key,
+        "old_url": old_url,
+        "new_url": r2_public_url(new_key),
+        "convert": convert,
+        "make_thumb": make_thumb,
+        "content_type": content_type,
+        "ext": ext,
+        "is_image": is_image,
+    }
 
 
 def rewrite_string(value: str, mapping: dict[str, str], api_bases: list[str]) -> str:
@@ -109,19 +147,25 @@ def migration_preview() -> dict[str, Any]:
     upload_root = Path(settings.upload_dir)
     files = collect_local_files(upload_root)
     total_bytes = sum(p.stat().st_size for p in files)
+    convert_count = 0
     samples = []
-    for p in files[:15]:
+    for p in files:
         try:
-            key = local_path_to_key(p, upload_root)
+            plan = plan_dest(p, upload_root)
+        except Exception:
+            continue
+        if plan["convert"]:
+            convert_count += 1
+        if len(samples) < 15:
             samples.append(
                 {
-                    "key": key,
+                    "key": plan["old_key"],
+                    "new_key": plan["new_key"],
+                    "convert": plan["convert"],
                     "size_mb": round(p.stat().st_size / 1e6, 2),
-                    "old_url": key_to_old_url(key),
+                    "old_url": plan["old_url"],
                 }
             )
-        except ValueError:
-            continue
     return {
         "r2_configured": settings.r2_configured,
         "storage_backend": settings.storage_backend,
@@ -129,10 +173,16 @@ def migration_preview() -> dict[str, Any]:
         "r2_public_base_url": settings.r2_public_base_url,
         "upload_dir": str(upload_root),
         "file_count": len(files),
+        "convert_count": convert_count,
         "total_mb": round(total_bytes / 1e6, 2),
         "busy": migration_busy(),
         "samples": samples,
     }
+
+
+def _add_thumb_aliases(mapping: dict[str, str], stem: str, thumb_url: str) -> None:
+    for ext in (".jpg", ".jpeg", ".png", ".webp"):
+        mapping[key_to_old_url(f"thumbnails/t_{stem}{ext}")] = thumb_url
 
 
 def iter_migration(*, apply: bool, delete_local: bool) -> Iterator[dict[str, Any]]:
@@ -152,11 +202,20 @@ def iter_migration(*, apply: bool, delete_local: bool) -> Iterator[dict[str, Any
 
         upload_root = Path(settings.upload_dir)
         files = collect_local_files(upload_root)
+        convert_count = 0
+        for p in files:
+            try:
+                if plan_dest(p, upload_root)["convert"]:
+                    convert_count += 1
+            except Exception:
+                pass
+
         yield {
             "type": "start",
             "apply": apply,
             "delete_local": delete_local and apply,
             "file_count": len(files),
+            "convert_count": convert_count,
             "upload_dir": str(upload_root),
             "public_base": settings.r2_public_base_url,
             "bucket": settings.r2_bucket,
@@ -167,76 +226,153 @@ def iter_migration(*, apply: bool, delete_local: bool) -> Iterator[dict[str, Any
             return
 
         mapping: dict[str, str] = {}
-        uploaded = skipped = deleted = db_updates = 0
+        # old_url → metadata para MediaFile
+        media_meta: dict[str, dict[str, Any]] = {}
+        uploaded = skipped = converted = deleted = db_updates = 0
         errors: list[str] = []
+        # path local → key destino en R2 (para delete seguro)
+        dest_by_path: list[tuple[Path, str, str]] = []
 
         for i, path in enumerate(files, start=1):
             try:
-                key = local_path_to_key(path, upload_root)
-            except ValueError as exc:
-                msg = f"fuera de upload_dir: {path}"
-                errors.append(msg)
-                yield {"type": "file_error", "index": i, "total": len(files), "path": str(path), "message": msg}
-                continue
-
-            old_url = key_to_old_url(key)
-            try:
-                new_url = r2_public_url(key)
+                plan = plan_dest(path, upload_root)
             except Exception as exc:
-                yield {"type": "error", "message": str(exc)}
-                return
-
-            mapping[old_url] = new_url
-            size_mb = round(path.stat().st_size / 1e6, 2)
-
-            if not apply:
-                yield {
-                    "type": "file",
-                    "index": i,
-                    "total": len(files),
-                    "action": "dry",
-                    "key": key,
-                    "old_url": old_url,
-                    "new_url": new_url,
-                    "size_mb": size_mb,
-                }
-                continue
-
-            try:
-                if object_exists(key):
-                    skipped += 1
-                    yield {
-                        "type": "file",
-                        "index": i,
-                        "total": len(files),
-                        "action": "skip",
-                        "key": key,
-                        "old_url": old_url,
-                        "new_url": new_url,
-                        "size_mb": size_mb,
-                    }
-                else:
-                    ct = guess_content_type(path)
-                    upload_file_path(key=key, path=str(path), content_type=ct)
-                    uploaded += 1
-                    yield {
-                        "type": "file",
-                        "index": i,
-                        "total": len(files),
-                        "action": "uploaded",
-                        "key": key,
-                        "old_url": old_url,
-                        "new_url": new_url,
-                        "size_mb": size_mb,
-                    }
-            except Exception as exc:
-                msg = f"{key}: {exc}"
+                msg = f"plan falló: {path}: {exc}"
                 errors.append(msg)
                 yield {
                     "type": "file_error",
                     "index": i,
                     "total": len(files),
-                    "key": key,
+                    "path": str(path),
+                    "message": msg,
+                }
+                continue
+
+            old_key = plan["old_key"]
+            new_key = plan["new_key"]
+            old_url = plan["old_url"]
+            new_url = plan["new_url"]
+            size_mb = round(path.stat().st_size / 1e6, 2)
+            dest_by_path.append((path, new_key, old_key))
+            mapping[old_url] = new_url
+
+            if not apply:
+                action = "convert" if plan["convert"] else "dry"
+                yield {
+                    "type": "file",
+                    "index": i,
+                    "total": len(files),
+                    "action": action,
+                    "key": old_key,
+                    "new_key": new_key,
+                    "old_url": old_url,
+                    "new_url": new_url,
+                    "size_mb": size_mb,
+                    "convert": plan["convert"],
+                }
+                if plan["convert"]:
+                    stem = Path(old_key).stem
+                    thumb_url = r2_public_url(f"thumbnails/t_{stem}.webp")
+                    if plan["make_thumb"]:
+                        _add_thumb_aliases(mapping, stem, thumb_url)
+                continue
+
+            try:
+                if object_exists(new_key):
+                    skipped += 1
+                    if plan["convert"]:
+                        stem = Path(old_key).stem
+                        media_meta[old_url] = {
+                            "filename": Path(new_key).name,
+                            "mime_type": "image/webp",
+                            "url": new_url,
+                        }
+                        if plan["make_thumb"]:
+                            thumb_url = r2_public_url(f"thumbnails/t_{Path(new_key).stem}.webp")
+                            _add_thumb_aliases(mapping, stem, thumb_url)
+                            media_meta[old_url]["thumbnail_url"] = thumb_url
+                    yield {
+                        "type": "file",
+                        "index": i,
+                        "total": len(files),
+                        "action": "skip",
+                        "key": old_key,
+                        "new_key": new_key,
+                        "old_url": old_url,
+                        "new_url": new_url,
+                        "size_mb": size_mb,
+                        "convert": plan["convert"],
+                    }
+                    continue
+
+                upload_path = path
+                upload_ct = plan["content_type"]
+                width = height = None
+                out_size = path.stat().st_size
+                thumb_url: str | None = None
+
+                with tempfile.TemporaryDirectory(prefix="eca360-mig-") as tmp:
+                    tmp_dir = Path(tmp)
+                    if plan["convert"]:
+                        webp_path = tmp_dir / Path(new_key).name
+                        width, height = compress_to_webp(
+                            path, webp_path, quality=settings.webp_quality
+                        )
+                        upload_path = webp_path
+                        upload_ct = "image/webp"
+                        out_size = webp_path.stat().st_size
+
+                        if plan["make_thumb"]:
+                            stem = Path(new_key).stem
+                            thumb_name = f"t_{stem}.webp"
+                            thumb_key = f"thumbnails/{thumb_name}"
+                            thumb_path = tmp_dir / thumb_name
+                            make_thumbnail_webp(webp_path, thumb_path)
+                            if not object_exists(thumb_key):
+                                thumb_url = upload_file_path(
+                                    key=thumb_key,
+                                    path=str(thumb_path),
+                                    content_type="image/webp",
+                                )
+                            else:
+                                thumb_url = r2_public_url(thumb_key)
+                            _add_thumb_aliases(mapping, Path(old_key).stem, thumb_url)
+
+                    upload_file_path(key=new_key, path=str(upload_path), content_type=upload_ct)
+                    uploaded += 1
+                    if plan["convert"]:
+                        converted += 1
+                        media_meta[old_url] = {
+                            "filename": Path(new_key).name,
+                            "mime_type": "image/webp",
+                            "url": new_url,
+                            "size_bytes": out_size,
+                            "width": width,
+                            "height": height,
+                        }
+                        if thumb_url:
+                            media_meta[old_url]["thumbnail_url"] = thumb_url
+
+                    yield {
+                        "type": "file",
+                        "index": i,
+                        "total": len(files),
+                        "action": "converted" if plan["convert"] else "uploaded",
+                        "key": old_key,
+                        "new_key": new_key,
+                        "old_url": old_url,
+                        "new_url": new_url,
+                        "size_mb": round(out_size / 1e6, 2),
+                        "convert": plan["convert"],
+                    }
+            except Exception as exc:
+                msg = f"{old_key}: {exc}"
+                errors.append(msg)
+                yield {
+                    "type": "file_error",
+                    "index": i,
+                    "total": len(files),
+                    "key": old_key,
                     "message": str(exc),
                 }
 
@@ -244,6 +380,7 @@ def iter_migration(*, apply: bool, delete_local: bool) -> Iterator[dict[str, Any
             "type": "upload_summary",
             "uploaded": uploaded,
             "skipped": skipped,
+            "converted": converted,
             "errors": len(errors),
             "mapping": len(mapping),
         }
@@ -257,11 +394,46 @@ def iter_migration(*, apply: bool, delete_local: bool) -> Iterator[dict[str, Any
         try:
             for row in db.query(MediaFile).all():
                 changed = False
-                nu = rewrite_string(row.url or "", mapping, api_bases)
-                if nu != (row.url or ""):
+                original_url = row.url or ""
+                nu = rewrite_string(original_url, mapping, api_bases)
+                if nu != original_url:
                     row.url = nu
                     changed = True
-                if row.thumbnail_url:
+
+                meta = media_meta.get(original_url)
+                if not meta:
+                    for old_u, m in media_meta.items():
+                        if rewrite_string(old_u, mapping, api_bases) == nu:
+                            meta = m
+                            break
+                        for base in api_bases:
+                            base = base.rstrip("/")
+                            if original_url.startswith(base) and original_url[len(base) :] == old_u:
+                                meta = m
+                                break
+                        if meta:
+                            break
+
+                if meta:
+                    if meta.get("filename") and row.filename != meta["filename"]:
+                        row.filename = meta["filename"]
+                        changed = True
+                    if meta.get("mime_type") and row.mime_type != meta["mime_type"]:
+                        row.mime_type = meta["mime_type"]
+                        changed = True
+                    if meta.get("size_bytes") is not None:
+                        row.size_bytes = meta["size_bytes"]
+                        changed = True
+                    if meta.get("width") is not None:
+                        row.width = meta["width"]
+                        changed = True
+                    if meta.get("height") is not None:
+                        row.height = meta["height"]
+                        changed = True
+                    if meta.get("thumbnail_url"):
+                        row.thumbnail_url = meta["thumbnail_url"]
+                        changed = True
+                elif row.thumbnail_url:
                     nt = rewrite_string(row.thumbnail_url, mapping, api_bases)
                     if nt != row.thumbnail_url:
                         row.thumbnail_url = nt
@@ -326,25 +498,27 @@ def iter_migration(*, apply: bool, delete_local: bool) -> Iterator[dict[str, Any
                     "errors": len(errors),
                 }
             else:
-                for i, path in enumerate(files, start=1):
+                total_del = len(dest_by_path)
+                for i, (path, dest_key, old_key) in enumerate(dest_by_path, start=1):
                     try:
-                        key = local_path_to_key(path, upload_root)
-                        if object_exists(key):
+                        if object_exists(dest_key):
                             path.unlink(missing_ok=True)
                             deleted += 1
                             yield {
                                 "type": "delete",
                                 "index": i,
-                                "total": len(files),
-                                "key": key,
+                                "total": total_del,
+                                "key": old_key,
+                                "dest_key": dest_key,
                                 "action": "deleted",
                             }
                         else:
                             yield {
                                 "type": "delete",
                                 "index": i,
-                                "total": len(files),
-                                "key": key,
+                                "total": total_del,
+                                "key": old_key,
+                                "dest_key": dest_key,
                                 "action": "missing_on_r2",
                             }
                     except Exception as exc:
@@ -354,6 +528,7 @@ def iter_migration(*, apply: bool, delete_local: bool) -> Iterator[dict[str, Any
                             "path": str(path),
                             "message": str(exc),
                         }
+                # limpia dirs vacíos
                 for d in sorted(upload_root.rglob("*"), reverse=True):
                     if d.is_dir():
                         try:
@@ -369,6 +544,7 @@ def iter_migration(*, apply: bool, delete_local: bool) -> Iterator[dict[str, Any
             "message": "Migración completada." if ok else "Migración terminó con errores.",
             "stats": {
                 "uploaded": uploaded,
+                "converted": converted,
                 "skipped": skipped,
                 "deleted": deleted,
                 "db_updates": db_updates,

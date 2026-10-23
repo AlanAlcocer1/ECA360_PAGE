@@ -7,16 +7,26 @@ import { getToken } from '../../lib/auth'
 function formatEventLine(ev) {
   const t = ev?.type
   if (t === 'start') {
-    return `Inicio · ${ev.file_count} archivo(s) · apply=${ev.apply} · borrar disco=${ev.delete_local}`
+    return `Inicio · ${ev.file_count} archivo(s) · a WebP=${ev.convert_count ?? 0} · apply=${ev.apply} · borrar disco=${ev.delete_local}`
   }
   if (t === 'file') {
+    const arrow =
+      ev.new_key && ev.new_key !== ev.key ? ` → ${ev.new_key}` : ''
     const label =
-      ev.action === 'uploaded' ? '↑ subido' : ev.action === 'skip' ? '↷ ya en R2' : '· dry-run'
-    return `${label}  [${ev.index}/${ev.total}]  ${ev.key}  (${ev.size_mb} MB)`
+      ev.action === 'converted'
+        ? 'WebP'
+        : ev.action === 'uploaded'
+          ? 'subido'
+          : ev.action === 'skip'
+            ? 'ya en R2'
+            : ev.action === 'convert'
+              ? 'dry WebP'
+              : 'dry-run'
+    return `${label}  [${ev.index}/${ev.total}]  ${ev.key}${arrow}  (${ev.size_mb} MB)`
   }
-  if (t === 'file_error') return `✗ error  ${ev.key || ev.path}: ${ev.message}`
+  if (t === 'file_error') return `error  ${ev.key || ev.path}: ${ev.message}`
   if (t === 'upload_summary') {
-    return `Subida lista · ok=${ev.uploaded} skip=${ev.skipped} errores=${ev.errors}`
+    return `Subida lista · ok=${ev.uploaded} webp=${ev.converted ?? 0} skip=${ev.skipped} errores=${ev.errors}`
   }
   if (t === 'db') return `BD ${ev.action} · filas/bloques=${ev.rows}`
   if (t === 'delete') {
@@ -152,8 +162,8 @@ export default function AdminMigrateR2Page() {
       <div>
         <h1 className="font-display text-3xl font-semibold text-ink">Migrar media a R2</h1>
         <p className="mt-1 text-sm text-muted">
-          Sube lo que aún está en el disco del servidor a Cloudflare R2, actualiza las URLs en la base
-          de datos y (opcional) borra los archivos locales.
+          Sube lo del disco a Cloudflare R2. Las imágenes jpg/png se convierten a WebP (como los
+          uploads nuevos), se actualizan las URLs en la BD y (opcional) se borran del servidor.
         </p>
       </div>
 
@@ -192,6 +202,11 @@ export default function AdminMigrateR2Page() {
               <dt className="text-xs text-muted">Archivos locales</dt>
               <dd className="font-medium text-ink">
                 {preview.file_count} · ~{preview.total_mb} MB
+                {preview.convert_count > 0 && (
+                  <span className="mt-0.5 block text-xs font-normal text-muted">
+                    {preview.convert_count} se convertirán a WebP (jpg/png)
+                  </span>
+                )}
               </dd>
             </div>
             <div>
@@ -207,7 +222,7 @@ export default function AdminMigrateR2Page() {
             <ul className="max-h-36 space-y-1 overflow-y-auto font-mono text-[11px] text-muted">
               {preview.samples.map((s) => (
                 <li key={s.key}>
-                  {s.key} · {s.size_mb} MB
+                  {s.convert ? `${s.key} → ${s.new_key}` : s.key} · {s.size_mb} MB
                 </li>
               ))}
             </ul>
@@ -288,7 +303,13 @@ export default function AdminMigrateR2Page() {
             <h3 className="font-display text-xl font-semibold text-ink">¿Ejecutar migración?</h3>
             <p className="mt-2 text-sm text-muted">
               Se subirán <strong>{preview?.file_count ?? 0}</strong> archivo(s) (~{preview?.total_mb ?? 0}{' '}
-              MB) a R2 y se actualizarán las URLs en la base de datos.
+              MB) a R2
+              {preview?.convert_count > 0 && (
+                <>
+                  ; <strong>{preview.convert_count}</strong> imagen(es) pasarán a WebP
+                </>
+              )}
+              {' '}y se actualizarán las URLs en la base de datos.
               {deleteLocal && (
                 <span className="mt-2 block font-medium text-red-700">
                   También se eliminarán del disco del servidor al terminar sin errores.

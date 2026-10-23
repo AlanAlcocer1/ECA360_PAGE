@@ -223,7 +223,8 @@ docker exec -it CONTAINER python scripts/migrate_uploads_to_r2.py --apply --dele
 ```
 
 La migración:
-- Sube `images/`, `videos/`, `thumbnails/` con la misma ruta como key en R2
+- Convierte jpg/png (y re-encode webp) a WebP como los uploads nuevos; GIF y video van tal cual
+- Sube a R2 (`images/*.webp`, thumbs `thumbnails/t_*.webp`, videos con la misma key)
 - Actualiza `media_files`, covers, `site_config` y JSON de `event_blocks`
 - Solo borra del disco lo que ya está en R2 (si lo pediste)
 
