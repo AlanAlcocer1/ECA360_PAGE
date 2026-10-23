@@ -9,7 +9,9 @@ from __future__ import annotations
 import mimetypes
 import tempfile
 import threading
+import uuid
 from collections.abc import Iterator
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -24,6 +26,22 @@ from app.utils.r2 import get_r2_client, r2_public_url, upload_file_path
 UPLOAD_PREFIX = "/uploads/"
 CONVERT_EXTS = {".jpg", ".jpeg", ".png", ".webp"}
 _migrate_lock = threading.Lock()
+
+# Job en background (sobrevive cerrar el navegador; vive en el proceso API)
+_job_lock = threading.Lock()
+_job: dict[str, Any] = {
+    "id": None,
+    "status": "idle",  # idle | running | done | error
+    "dry_run": False,
+    "delete_local": False,
+    "started_at": None,
+    "finished_at": None,
+    "events": [],
+    "progress": {"index": 0, "total": 0},
+    "stats": {},
+    "ok": None,
+    "message": "",
+}
 
 
 def migration_busy() -> bool:
@@ -554,3 +572,118 @@ def iter_migration(*, apply: bool, delete_local: bool) -> Iterator[dict[str, Any
         }
     finally:
         _migrate_lock.release()
+
+
+def _iso_now() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def get_migration_job(*, since: int = 0) -> dict[str, Any]:
+    """Estado del job + eventos desde `since` (para polling del admin)."""
+    with _job_lock:
+        events = _job["events"]
+        start = max(0, min(since, len(events)))
+        return {
+            "id": _job["id"],
+            "status": _job["status"],
+            "busy": migration_busy() or _job["status"] == "running",
+            "dry_run": _job["dry_run"],
+            "delete_local": _job["delete_local"],
+            "started_at": _job["started_at"],
+            "finished_at": _job["finished_at"],
+            "progress": dict(_job["progress"]),
+            "stats": dict(_job["stats"] or {}),
+            "ok": _job["ok"],
+            "message": _job["message"],
+            "event_count": len(events),
+            "since": start,
+            "events": list(events[start:]),
+        }
+
+
+def _append_job_event(ev: dict[str, Any]) -> None:
+    with _job_lock:
+        _job["events"].append(ev)
+        t = ev.get("type")
+        if t in ("file", "delete", "file_error"):
+            _job["progress"] = {
+                "index": int(ev.get("index") or 0),
+                "total": int(ev.get("total") or _job["progress"].get("total") or 0),
+            }
+        if t == "start":
+            _job["progress"] = {
+                "index": 0,
+                "total": int(ev.get("file_count") or 0),
+            }
+        if t == "done":
+            _job["stats"] = dict(ev.get("stats") or {})
+            _job["ok"] = bool(ev.get("ok"))
+            _job["message"] = str(ev.get("message") or "")
+        if t == "error":
+            _job["ok"] = False
+            _job["message"] = str(ev.get("message") or "Error")
+
+
+def _run_migration_job(*, apply: bool, delete_local: bool) -> None:
+    try:
+        for ev in iter_migration(apply=apply, delete_local=delete_local):
+            _append_job_event(ev)
+        with _job_lock:
+            if _job["ok"] is False:
+                _job["status"] = "error"
+            else:
+                _job["status"] = "done"
+                if not _job["message"]:
+                    _job["message"] = "Migración completada."
+            _job["finished_at"] = _iso_now()
+    except Exception as exc:
+        _append_job_event({"type": "error", "message": str(exc)})
+        with _job_lock:
+            _job["status"] = "error"
+            _job["ok"] = False
+            _job["message"] = str(exc)
+            _job["finished_at"] = _iso_now()
+
+
+def start_migration_job(*, apply: bool, delete_local: bool) -> dict[str, Any]:
+    """Arranca la migración en un hilo daemon. No depende del navegador."""
+    with _job_lock:
+        if _job["status"] == "running" or migration_busy():
+            return {
+                "started": False,
+                "error": "Ya hay una migración en curso.",
+                **{k: _job[k] for k in ("id", "status", "started_at", "dry_run", "delete_local")},
+            }
+
+        job_id = uuid.uuid4().hex[:12]
+        _job.update(
+            {
+                "id": job_id,
+                "status": "running",
+                "dry_run": not apply,
+                "delete_local": bool(delete_local and apply),
+                "started_at": _iso_now(),
+                "finished_at": None,
+                "events": [],
+                "progress": {"index": 0, "total": 0},
+                "stats": {},
+                "ok": None,
+                "message": "En curso…",
+            }
+        )
+
+    thread = threading.Thread(
+        target=_run_migration_job,
+        kwargs={"apply": apply, "delete_local": delete_local and apply},
+        name=f"migrate-r2-{job_id}",
+        daemon=True,
+    )
+    thread.start()
+    return {
+        "started": True,
+        "id": job_id,
+        "status": "running",
+        "dry_run": not apply,
+        "delete_local": bool(delete_local and apply),
+        "message": "Migración iniciada en el servidor. Puedes cerrar esta pestaña y volver.",
+    }
