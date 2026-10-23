@@ -1,7 +1,4 @@
-import json
-
-from fastapi import APIRouter, Depends, File, UploadFile
-from fastapi.responses import StreamingResponse
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, Query
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
@@ -9,7 +6,7 @@ from app.database import get_db
 from app.models import MediaFile
 from app.schemas import LoginRequest, LoginResponse, MediaOut, SiteSettings, SiteSettingsUpdate
 from app.services import site as site_service
-from app.services.r2_migrate import iter_migration, migration_preview
+from app.services.r2_migrate import get_migration_job, migration_preview, start_migration_job
 from app.utils.auth import make_persistent_token, require_admin, verify_password
 from app.utils.media import save_upload
 
@@ -77,23 +74,33 @@ def list_media(db: Session = Depends(get_db), _: str = Depends(require_admin)):
 @router.get("/admin/migrate-r2/preview")
 def migrate_r2_preview(_: str = Depends(require_admin)):
     """Resumen de archivos locales y estado R2 (antes de migrar)."""
-    return migration_preview()
+    data = migration_preview()
+    data["job"] = get_migration_job(since=0)
+    # preview no necesita todos los eventos
+    data["job"] = {
+        k: v
+        for k, v in data["job"].items()
+        if k != "events"
+    }
+    return data
+
+
+@router.get("/admin/migrate-r2/status")
+def migrate_r2_status(
+    since: int = Query(0, ge=0, description="Devolver eventos desde este índice"),
+    _: str = Depends(require_admin),
+):
+    """Progreso del job en background (polling)."""
+    return get_migration_job(since=since)
 
 
 @router.post("/admin/migrate-r2/run")
 def migrate_r2_run(payload: MigrateR2Request, _: str = Depends(require_admin)):
-    """Ejecuta migración y hace stream NDJSON con el progreso archivo a archivo."""
-
-    def event_stream():
-        apply = not payload.dry_run
-        for ev in iter_migration(apply=apply, delete_local=payload.delete_local and apply):
-            yield json.dumps(ev, ensure_ascii=False) + "\n"
-
-    return StreamingResponse(
-        event_stream(),
-        media_type="application/x-ndjson",
-        headers={
-            "Cache-Control": "no-cache",
-            "X-Accel-Buffering": "no",
-        },
+    """Arranca migración en background en el servidor (no depende del navegador)."""
+    result = start_migration_job(
+        apply=not payload.dry_run,
+        delete_local=payload.delete_local,
     )
+    if not result.get("started"):
+        raise HTTPException(status_code=409, detail=result.get("error") or "Migración en curso")
+    return result

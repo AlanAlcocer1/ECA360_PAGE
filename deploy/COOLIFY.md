@@ -211,10 +211,12 @@ Los archivos ya existentes en `/data/uploads` se migran con el script de abajo (
 ### 3.5.2 Migrar uploads del VPS → R2
 
 **Recomendado (UI):** Admin → **Migrar a R2**  
+- Corre en **background en el API** (puedes cerrar el navegador y volver al log)  
 - Muestra cuántos archivos hay en disco  
 - **Simular** (dry-run) o **Migrar** con confirmación  
-- Log en vivo (archivo subido / ya en R2 / borrado)  
-- Checkbox para eliminar del servidor al terminar  
+- Log con progreso (WebP / ya en R2 / borrado); re-correr salta lo que ya está en R2  
+- Checkbox para eliminar del servidor al terminar (mejor en una 2ª pasada)  
+ 
 
 **CLI (opcional):**
 ```bash
