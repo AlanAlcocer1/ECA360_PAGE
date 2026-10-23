@@ -6,7 +6,7 @@ import { dismissReviewPrompt } from '../../lib/reviewPrompt'
 
 /**
  * Modal post-descarga: invita a dejar reseña del evento.
- * "Después" / "Omitir" guardan en localStorage para no repetir en este evento.
+ * "Omitir" (y cerrar) guardan en localStorage para no repetir en este evento.
  */
 export default function ReviewAfterDownloadModal({
   open,
@@ -15,10 +15,15 @@ export default function ReviewAfterDownloadModal({
   onClose,
   onLeaveReview,
 }) {
+  const handleOmit = () => {
+    dismissReviewPrompt(eventId, 'omit')
+    onClose?.()
+  }
+
   useEffect(() => {
     if (!open) return undefined
     const onKey = (e) => {
-      if (e.key === 'Escape') handleLater()
+      if (e.key === 'Escape') handleOmit()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -26,16 +31,6 @@ export default function ReviewAfterDownloadModal({
   }, [open, eventId])
 
   if (typeof document === 'undefined') return null
-
-  const handleLater = () => {
-    dismissReviewPrompt(eventId, 'later')
-    onClose?.()
-  }
-
-  const handleOmit = () => {
-    dismissReviewPrompt(eventId, 'omit')
-    onClose?.()
-  }
 
   const handleReview = () => {
     dismissReviewPrompt(eventId, 'done')
@@ -60,7 +55,7 @@ export default function ReviewAfterDownloadModal({
             type="button"
             className="absolute inset-0 bg-black/55"
             aria-label="Cerrar"
-            onClick={handleLater}
+            onClick={handleOmit}
           />
           <motion.div
             className="relative z-10 w-full max-w-md overflow-hidden border border-line bg-white shadow-2xl"
@@ -72,7 +67,7 @@ export default function ReviewAfterDownloadModal({
             <div className="h-1.5 w-full bg-brand" />
             <button
               type="button"
-              onClick={handleLater}
+              onClick={handleOmit}
               className="absolute right-3 top-4 flex h-9 w-9 items-center justify-center text-muted hover:text-ink"
               aria-label="Cerrar"
             >
@@ -106,22 +101,13 @@ export default function ReviewAfterDownloadModal({
                 Dejar mi reseña
               </button>
 
-              <div className="mt-3 flex gap-2">
-                <button
-                  type="button"
-                  onClick={handleLater}
-                  className="flex-1 border border-line px-3 py-2.5 text-sm font-medium text-ink hover:bg-surface"
-                >
-                  Después
-                </button>
-                <button
-                  type="button"
-                  onClick={handleOmit}
-                  className="flex-1 px-3 py-2.5 text-sm text-muted hover:text-ink"
-                >
-                  Omitir
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={handleOmit}
+                className="mt-3 w-full py-2.5 text-sm text-muted hover:text-ink"
+              >
+                Omitir
+              </button>
             </div>
           </motion.div>
         </motion.div>

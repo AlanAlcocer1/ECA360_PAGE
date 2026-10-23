@@ -93,6 +93,7 @@ export default function MediaGalleryPicker({
     if (!open) return undefined
     const prev = document.body.style.overflow
     document.body.style.overflow = 'hidden'
+    document.body.classList.add('eca-gallery-open')
     const onKey = (e) => {
       if (e.key === 'Escape') {
         if (selectMode) {
@@ -109,6 +110,7 @@ export default function MediaGalleryPicker({
     window.addEventListener('keydown', onKey)
     return () => {
       document.body.style.overflow = prev
+      document.body.classList.remove('eca-gallery-open')
       window.removeEventListener('keydown', onKey)
     }
   }, [open, onClose, selectMode, list.length])
