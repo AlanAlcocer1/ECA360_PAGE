@@ -13,6 +13,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY backend/app ./app
 COPY backend/alembic ./alembic
 COPY backend/alembic.ini ./alembic.ini
+COPY backend/scripts ./scripts
 COPY deploy/entrypoint.api.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh \
     && mkdir -p /data/uploads/images /data/uploads/videos /data/uploads/thumbnails
