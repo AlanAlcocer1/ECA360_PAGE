@@ -39,9 +39,12 @@ def main() -> None:
                 f"delete={ev.get('delete_local')} public={ev.get('public_base')}"
             )
         elif t == "file":
+            dest = ev.get("new_key") or ev.get("key")
+            src = ev.get("key")
+            arrow = f" → {dest}" if dest and dest != src else ""
             print(
                 f"  [{ev.get('action')}] {ev.get('index')}/{ev.get('total')} "
-                f"{ev.get('key')} ({ev.get('size_mb')} MB)"
+                f"{src}{arrow} ({ev.get('size_mb')} MB)"
             )
         elif t == "file_error":
             print(f"  [ERR] {ev.get('key') or ev.get('path')}: {ev.get('message')}")
