@@ -21,6 +21,15 @@ class Settings(BaseSettings):
     app_url: str = "http://localhost:5173"
     api_url: str = "http://localhost:8000"
 
+    # Storage: local (disco /uploads) | r2 (Cloudflare R2)
+    storage_backend: str = "local"
+    r2_account_id: str = ""
+    r2_access_key_id: str = ""
+    r2_secret_access_key: str = ""
+    r2_bucket: str = "eca360-media"
+    r2_endpoint: str = ""
+    r2_public_base_url: str = ""
+
     @property
     def cors_origin_list(self) -> list[str]:
         origins = [o.strip() for o in self.cors_origins.split(",") if o.strip()]
@@ -30,7 +39,19 @@ class Settings(BaseSettings):
     def cors_allow_all(self) -> bool:
         return "*" in self.cors_origin_list
 
+    @property
+    def r2_configured(self) -> bool:
+        return bool(
+            self.storage_backend == "r2"
+            and self.r2_access_key_id
+            and self.r2_secret_access_key
+            and self.r2_endpoint
+            and self.r2_public_base_url
+            and self.r2_bucket
+        )
+
 
 @lru_cache
 def get_settings() -> Settings:
     return Settings()
+

@@ -178,6 +178,15 @@ API_URL=https://api.eca360.com.mx
 APP_NAME=ECA MID
 HOST=0.0.0.0
 PORT=8000
+
+# Media nuevos → Cloudflare R2 (los /uploads viejos del VPS siguen sirviendo)
+STORAGE_BACKEND=r2
+R2_ACCOUNT_ID=tu_account_id
+R2_ACCESS_KEY_ID=...
+R2_SECRET_ACCESS_KEY=...
+R2_BUCKET=eca360-media
+R2_ENDPOINT=https://<ACCOUNT_ID>.r2.cloudflarestorage.com
+R2_PUBLIC_BASE_URL=https://pub-xxxxx.r2.dev
 ```
 
 Notas:
@@ -185,7 +194,19 @@ Notas:
 - `DATABASE_URL` lleva **cuatro** slashes: `sqlite:////data/eca360.db` (ruta absoluta en Linux).
 - Cuando tengas el front en Cloudflare, `CORS_ORIGINS` debe incluir exactamente esas URLs (con `https://`).
 - Incluye `https://eca360-page.pages.dev` mientras el front viva ahí (y cualquier preview `https://*.eca360-page.pages.dev` si lo usas).
-- Tras cambiar `CORS_ORIGINS` en Coolify, haz **Redeploy** (el proceso ya corriendo no releerá el `.env`).
+- Tras cambiar `CORS_ORIGINS` o variables R2 en Coolify, haz **Redeploy** (el proceso ya corriendo no releerá el `.env`).
+- Sin R2: `STORAGE_BACKEND=local` (default) y omite las vars `R2_*`.
+
+### 3.5.1 Cloudflare R2 (uploads nuevos)
+
+1. Cloudflare → **R2** → Create bucket (ej. `eca360-media`).
+2. Bucket → **Settings** → **Public access** → Allow access → copia la URL `https://pub-….r2.dev` → `R2_PUBLIC_BASE_URL`.
+3. R2 → **Manage R2 API Tokens** → Create token (**Object Read & Write**, idealmente solo ese bucket).
+4. Guarda Access Key ID, Secret Access Key y el endpoint  
+   `https://<ACCOUNT_ID>.r2.cloudflarestorage.com`.
+5. Pega las vars en Coolify (arriba) y **Redeploy**.
+
+Los archivos ya existentes en `/data/uploads` no se migran aquí (fase 2). El API sigue montando `/uploads` para ese legado.
 
 ### 3.6 Healthcheck (opcional pero útil)
 
@@ -311,10 +332,11 @@ Cada `git push origin main` redespliega la API.
 - [ ] Resource Dockerfile `deploy/Dockerfile.api`
 - [ ] Volume `/data`
 - [ ] Env vars configuradas (`ADMIN_PASSWORD`, `CORS_ORIGINS`, etc.)
+- [ ] R2 configurado si usas `STORAGE_BACKEND=r2` (bucket + token + `R2_PUBLIC_BASE_URL`)
 - [ ] HTTPS OK en `https://api.eca360.com.mx/health`
 - [ ] Backup restaurado en `/data`
 - [ ] `/events` lista eventos reales
-- [ ] Una imagen de `/uploads/...` abre en el navegador
+- [ ] Una imagen de `/uploads/...` abre en el navegador (legado) o URL `r2.dev` (nuevos)
 - [ ] Webhook de GitHub (opcional)
 
 ---
