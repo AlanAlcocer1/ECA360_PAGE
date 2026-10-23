@@ -15,6 +15,7 @@ import AdminEventsPage from './pages/admin/AdminEventsPage'
 import AdminEventEditorPage from './pages/admin/AdminEventEditorPage'
 import AdminCommentsPage from './pages/admin/AdminCommentsPage'
 import AdminSettingsPage from './pages/admin/AdminSettingsPage'
+import AdminMigrateR2Page from './pages/admin/AdminMigrateR2Page'
 
 function AppToaster() {
   const { settings } = useSiteSettings()
@@ -67,6 +68,7 @@ export default function App() {
               <Route path="eventos/nuevo" element={<AdminEventEditorPage />} />
               <Route path="eventos/:id" element={<AdminEventEditorPage />} />
               <Route path="comentarios" element={<AdminCommentsPage />} />
+              <Route path="migrar-r2" element={<AdminMigrateR2Page />} />
               <Route path="configuracion" element={<AdminSettingsPage />} />
               <Route path="*" element={<Navigate to="/admin" replace />} />
             </Route>

@@ -206,7 +206,26 @@ Notas:
    `https://<ACCOUNT_ID>.r2.cloudflarestorage.com`.
 5. Pega las vars en Coolify (arriba) y **Redeploy**.
 
-Los archivos ya existentes en `/data/uploads` no se migran aquí (fase 2). El API sigue montando `/uploads` para ese legado.
+Los archivos ya existentes en `/data/uploads` se migran con el script de abajo (fase 2). El API sigue montando `/uploads` por si queda algo legado.
+
+### 3.5.2 Migrar uploads del VPS → R2
+
+**Recomendado (UI):** Admin → **Migrar a R2**  
+- Muestra cuántos archivos hay en disco  
+- **Simular** (dry-run) o **Migrar** con confirmación  
+- Log en vivo (archivo subido / ya en R2 / borrado)  
+- Checkbox para eliminar del servidor al terminar  
+
+**CLI (opcional):**
+```bash
+docker exec CONTAINER cp /data/eca360.db /data/eca360.db.bak-pre-r2
+docker exec -it CONTAINER python scripts/migrate_uploads_to_r2.py --apply --delete-local
+```
+
+La migración:
+- Sube `images/`, `videos/`, `thumbnails/` con la misma ruta como key en R2
+- Actualiza `media_files`, covers, `site_config` y JSON de `event_blocks`
+- Solo borra del disco lo que ya está en R2 (si lo pediste)
 
 ### 3.6 Healthcheck (opcional pero útil)
 

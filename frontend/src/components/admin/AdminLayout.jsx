@@ -6,6 +6,7 @@ import {
   Settings,
   LogOut,
   ExternalLink,
+  CloudUpload,
 } from 'lucide-react'
 import { clearToken } from '../../lib/auth'
 import clsx from 'clsx'
@@ -14,6 +15,7 @@ const links = [
   { to: '/admin', end: true, label: 'Dashboard', icon: LayoutDashboard },
   { to: '/admin/eventos', label: 'Eventos', icon: CalendarDays },
   { to: '/admin/comentarios', label: 'Comentarios', icon: MessageSquare },
+  { to: '/admin/migrar-r2', label: 'Migrar a R2', icon: CloudUpload },
   { to: '/admin/configuracion', label: 'Configuración', icon: Settings },
 ]
 
