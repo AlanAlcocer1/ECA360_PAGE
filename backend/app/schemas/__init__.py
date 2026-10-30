@@ -98,8 +98,8 @@ class EventPaginated(BaseModel):
 # ── Comments ────────────────────────────────────────────────────────────────
 
 class CommentCreate(BaseModel):
-    name: str = Field(..., min_length=1, max_length=120)
-    content: str = Field(..., min_length=1, max_length=2000)
+    name: str = Field("Anónimo", min_length=1, max_length=120)
+    content: str = Field("", max_length=2000)  # opcional (modal de entrada)
     event_id: int
     rating: int = Field(5, ge=1, le=5)
 

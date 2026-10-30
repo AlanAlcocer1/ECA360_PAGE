@@ -14,23 +14,17 @@ function alignClass(align) {
   return 'text-left'
 }
 
-export default function BlockRenderer({ blocks = [], eventId, eventTitle, onLeaveReview }) {
+export default function BlockRenderer({ blocks = [] }) {
   return (
     <div className="prose-event space-y-10">
       {blocks.map((block) => (
-        <Block
-          key={block.id || `${block.type}-${block.position}`}
-          block={block}
-          eventId={eventId}
-          eventTitle={eventTitle}
-          onLeaveReview={onLeaveReview}
-        />
+        <Block key={block.id || `${block.type}-${block.position}`} block={block} />
       ))}
     </div>
   )
 }
 
-function Block({ block, eventId, eventTitle, onLeaveReview }) {
+function Block({ block }) {
   const { type, content = {}, settings = {} } = block
 
   switch (type) {
@@ -142,14 +136,7 @@ function Block({ block, eventId, eventTitle, onLeaveReview }) {
     }
 
     case 'carousel':
-      return (
-        <CarouselBlock
-          content={content}
-          eventId={eventId}
-          eventTitle={eventTitle}
-          onLeaveReview={onLeaveReview}
-        />
-      )
+      return <CarouselBlock content={content} />
 
     case 'two_columns':
       return (
@@ -237,7 +224,7 @@ function Block({ block, eventId, eventTitle, onLeaveReview }) {
   }
 }
 
-function CarouselBlock({ content, eventId, eventTitle, onLeaveReview }) {
+function CarouselBlock({ content }) {
   const [open, setOpen] = useState(false)
   const [index, setIndex] = useState(0)
   const items = (content.items || []).filter((item) => item.url || item.src)
@@ -272,9 +259,6 @@ function CarouselBlock({ content, eventId, eventTitle, onLeaveReview }) {
         items={items}
         initialIndex={index}
         onClose={() => setOpen(false)}
-        eventId={eventId}
-        eventTitle={eventTitle}
-        onLeaveReview={onLeaveReview}
       />
     </>
   )

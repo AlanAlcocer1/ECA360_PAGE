@@ -3,8 +3,6 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { Check, Download, Play, X } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { getApiBaseUrl, mediaUrl } from '../../services/api'
-import { shouldShowReviewPrompt } from '../../lib/reviewPrompt'
-import ReviewAfterDownloadModal from '../comments/ReviewAfterDownloadModal'
 
 function itemSrc(item) {
   return mediaUrl(item.url || item.src)
@@ -65,9 +63,6 @@ export default function MediaGalleryPicker({
   initialIndex = 0,
   startInSelect = false,
   onClose,
-  eventId,
-  eventTitle,
-  onLeaveReview,
 }) {
   const list = useMemo(
     () => (items || []).filter((it) => it.url || it.src),
@@ -77,7 +72,6 @@ export default function MediaGalleryPicker({
   const [selectMode, setSelectMode] = useState(false)
   const [preview, setPreview] = useState(initialIndex)
   const [busy, setBusy] = useState(false)
-  const [reviewOpen, setReviewOpen] = useState(false)
   const swipeRef = useRef(null)
 
   useEffect(() => {
@@ -86,7 +80,6 @@ export default function MediaGalleryPicker({
     setSelected(new Set())
     setSelectMode(Boolean(startInSelect))
     setBusy(false)
-    setReviewOpen(false)
   }, [open, initialIndex, list.length, startInSelect])
 
   useEffect(() => {
@@ -153,9 +146,6 @@ export default function MediaGalleryPicker({
         if (indexes.length > 1) await new Promise((r) => setTimeout(r, 550))
       }
       toast.success(ok === 1 ? 'Descarga lista' : `${ok} archivos descargados`)
-      if (eventId && shouldShowReviewPrompt(eventId)) {
-        window.setTimeout(() => setReviewOpen(true), 450)
-      }
     } catch {
       toast.error('No se pudo descargar alguna. Revisa permisos del navegador.')
     } finally {
@@ -166,7 +156,6 @@ export default function MediaGalleryPicker({
   const current = list[preview]
 
   return (
-    <>
     <AnimatePresence>
       <motion.div
         className="fixed inset-0 z-[100] flex flex-col bg-black/95 text-white"
@@ -330,18 +319,5 @@ export default function MediaGalleryPicker({
         </footer>
       </motion.div>
     </AnimatePresence>
-
-    <ReviewAfterDownloadModal
-      open={reviewOpen}
-      eventId={eventId}
-      eventTitle={eventTitle}
-      onClose={() => setReviewOpen(false)}
-      onLeaveReview={() => {
-        setReviewOpen(false)
-        onClose?.()
-        onLeaveReview?.()
-      }}
-    />
-    </>
   )
 }

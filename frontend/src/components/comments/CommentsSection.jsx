@@ -40,6 +40,14 @@ export default function CommentsSection({ eventId }) {
     load()
   }, [eventId])
 
+  useEffect(() => {
+    const onRefresh = (e) => {
+      if (e.detail?.eventId === eventId) load()
+    }
+    window.addEventListener('eca:comments-refresh', onRefresh)
+    return () => window.removeEventListener('eca:comments-refresh', onRefresh)
+  }, [eventId])
+
   const onSubmit = async (values) => {
     if (!rating || rating < 1 || rating > 5) {
       setRatingError('Elige al menos 1 estrella para publicar')
