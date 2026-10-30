@@ -7,10 +7,12 @@ import { formatDate } from '../lib/utils'
 import { useSiteSettings } from '../context/SiteSettingsContext'
 import BlockRenderer from '../components/blocks/BlockRenderer'
 import CommentsSection from '../components/comments/CommentsSection'
+import EventReviewEntryModal from '../components/comments/EventReviewEntryModal'
 import EventCard from '../components/events/EventCard'
 import HireEcaFab from '../components/HireEcaFab'
 import SocialsModal from '../components/social/SocialsModal'
 import { CONTACTO } from '../lib/landingData'
+import { shouldShowReviewPrompt } from '../lib/reviewPrompt'
 import './landing.css'
 import './event-page.css'
 
@@ -29,6 +31,7 @@ export default function EventPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(false)
   const [redesOpen, setRedesOpen] = useState(false)
+  const [reviewOpen, setReviewOpen] = useState(false)
   const openRedes = useCallback(() => setRedesOpen(true), [])
   const closeRedes = useCallback(() => setRedesOpen(false), [])
 
@@ -36,11 +39,18 @@ export default function EventPage() {
     let cancelled = false
     setLoading(true)
     setError(false)
+    setReviewOpen(false)
     Promise.all([eventsApi.getBySlug(slug), eventsApi.related(slug)])
       .then(([ev, rel]) => {
         if (cancelled) return
         setEvent(ev.data)
         setRelated(rel.data)
+        if (ev.data?.id && shouldShowReviewPrompt(ev.data.id)) {
+          // Pequeña pausa para que cargue la página antes del modal
+          window.setTimeout(() => {
+            if (!cancelled) setReviewOpen(true)
+          }, 600)
+        }
       })
       .catch(() => {
         if (!cancelled) setError(true)
@@ -157,17 +167,7 @@ export default function EventPage() {
               )}
 
               <div style={{ marginTop: event.blocks?.some((b) => b.type === 'hero') ? 0 : 48 }}>
-                <BlockRenderer
-                  blocks={event.blocks || []}
-                  eventId={event.id}
-                  eventTitle={event.title}
-                  onLeaveReview={() => {
-                    document.getElementById('comentarios')?.scrollIntoView({
-                      behavior: 'smooth',
-                      block: 'start',
-                    })
-                  }}
-                />
+                <BlockRenderer blocks={event.blocks || []} />
                 <div style={{ marginTop: 64 }}>
                   <CommentsSection eventId={event.id} />
                 </div>
@@ -211,6 +211,19 @@ export default function EventPage() {
       </footer>
 
       <SocialsModal open={redesOpen} onClose={closeRedes} />
+
+      {event && (
+        <EventReviewEntryModal
+          open={reviewOpen}
+          eventId={event.id}
+          onClose={() => setReviewOpen(false)}
+          onSubmitted={() => {
+            setReviewOpen(false)
+            // Refresca lista de comentarios si ya está montada
+            window.dispatchEvent(new CustomEvent('eca:comments-refresh', { detail: { eventId: event.id } }))
+          }}
+        />
+      )}
     </div>
   )
 }

@@ -1,4 +1,4 @@
-/** Preferencia local: no molestar de nuevo con el prompt de reseña por evento. */
+/** Preferencia local: modal de opinión al entrar al evento — solo 1ª vez. */
 
 const PREFIX = 'eca360:review-prompt:'
 
@@ -12,8 +12,8 @@ export function shouldShowReviewPrompt(eventId) {
     const raw = localStorage.getItem(key(eventId))
     if (!raw) return true
     const data = JSON.parse(raw)
-    // later | omit | done → no volver a mostrar
-    if (data?.status === 'later' || data?.status === 'omit' || data?.status === 'done') {
+    // omit (cerró X) | done (envió) → no volver a mostrar
+    if (data?.status === 'omit' || data?.status === 'done' || data?.status === 'later') {
       return false
     }
     return true
@@ -22,13 +22,10 @@ export function shouldShowReviewPrompt(eventId) {
   }
 }
 
-export function dismissReviewPrompt(eventId, status = 'later') {
+export function dismissReviewPrompt(eventId, status = 'omit') {
   if (eventId == null || eventId === '') return
   try {
-    localStorage.setItem(
-      key(eventId),
-      JSON.stringify({ status, at: Date.now() }),
-    )
+    localStorage.setItem(key(eventId), JSON.stringify({ status, at: Date.now() }))
   } catch {
     /* private mode / quota */
   }

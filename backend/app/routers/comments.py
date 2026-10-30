@@ -29,10 +29,12 @@ def create_comment(payload: CommentCreate, db: Session = Depends(get_db)):
     event = db.query(Event).filter(Event.id == payload.event_id, Event.status == "published").first()
     if not event:
         raise HTTPException(404, "Evento no encontrado")
+    name = (payload.name or "").strip() or "Anónimo"
+    content = (payload.content or "").strip() or "—"
     comment = Comment(
         event_id=payload.event_id,
-        name=payload.name.strip(),
-        content=payload.content.strip(),
+        name=name,
+        content=content,
         rating=payload.rating,
         approved=True,
     )
