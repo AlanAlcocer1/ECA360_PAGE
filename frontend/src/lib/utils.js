@@ -30,6 +30,26 @@ export function parseEventDate(value) {
   return Number.isNaN(date.getTime()) ? null : date
 }
 
+function pad2(n) {
+  return String(n).padStart(2, '0')
+}
+
+/** API/UTC → valor para <input type="datetime-local"> (hora local, sin drift). */
+export function toDatetimeLocalValue(value) {
+  const date = parseEventDate(value)
+  if (!date) return ''
+  return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}T${pad2(date.getHours())}:${pad2(date.getMinutes())}`
+}
+
+/** Valor de datetime-local (hora local) → ISO UTC para el API. */
+export function fromDatetimeLocalValue(value) {
+  if (!value) return null
+  // "YYYY-MM-DDTHH:mm" lo interpreta JS como hora local
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return null
+  return date.toISOString()
+}
+
 export function formatDate(value, options = {}) {
   const date = parseEventDate(value)
   if (!date) return ''
