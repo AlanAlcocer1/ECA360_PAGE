@@ -13,10 +13,17 @@ function itemThumb(item) {
   return itemSrc(item)
 }
 
+/** Nombres que manda la cabina/ingest — no sirven como nombre de descarga. */
+const GENERIC_STEM =
+  /^(processed|output|video|final|export|clip|movie|render|file|media|thumb|thumbnail|poster|preview)$/i
+
 function fileName(item, i, { asPng = false } = {}) {
-  const raw = item.alt || item.caption || (item.type === 'video' ? `video-${i + 1}` : `foto-${i + 1}`)
-  let base = String(raw).replace(/[^\w.\-áéíóúñÁÉÍÓÚÑ ]+/g, '').trim() || `media-${i + 1}`
+  const fallback = item.type === 'video' ? `video-${i + 1}` : `foto-${i + 1}`
+  let raw = item.alt || item.caption || ''
+  let base = String(raw).replace(/[^\w.\-áéíóúñÁÉÍÓÚÑ ]+/g, '').trim()
   base = base.replace(/\.(jpe?g|png|webp|gif|mp4|mov|webm)$/i, '')
+  if (!base || GENERIC_STEM.test(base)) base = fallback
+
   if (item.type === 'video') {
     const url = item.url || item.src || ''
     const extMatch = url.match(/\.(mp4|mov|webm)(\?|$)/i)
@@ -32,17 +39,17 @@ function isProbablyMobile() {
 }
 
 /** Fotos → API PNG. Videos → proxy API (evita CORS de R2 en el celular). */
-function downloadUrlFor(item) {
+function downloadUrlFor(item, index = 0) {
   const pathOrUrl = item.url || item.src || ''
   const api = getApiBaseUrl()
   if (item.type === 'video') {
     const params = new URLSearchParams({ url: pathOrUrl })
-    const name = fileName(item, 0)
+    const name = fileName(item, index)
     if (name) params.set('filename', name)
     return `${api}/download/file?${params.toString()}`
   }
   const params = new URLSearchParams({ url: pathOrUrl })
-  const stem = fileName(item, 0, { asPng: true }).replace(/\.png$/i, '')
+  const stem = fileName(item, index, { asPng: true }).replace(/\.png$/i, '')
   if (stem) params.set('filename', stem)
   return `${api}/download?${params.toString()}`
 }
@@ -61,7 +68,7 @@ function triggerUrlDownload(url, name) {
 
 function saveOne(item, index) {
   const name = fileName(item, index, { asPng: item.type !== 'video' })
-  triggerUrlDownload(downloadUrlFor(item), name)
+  triggerUrlDownload(downloadUrlFor(item, index), name)
   return 'download'
 }
 
