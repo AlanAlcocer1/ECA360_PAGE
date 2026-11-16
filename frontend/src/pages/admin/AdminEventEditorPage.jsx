@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { ArrowLeft, Save, Upload } from 'lucide-react'
 import { eventsApi, mediaUrl, uploadApi } from '../../services/api'
+import { fromDatetimeLocalValue, toDatetimeLocalValue } from '../../lib/utils'
 import BlockEditor from '../../components/admin/BlockEditor'
 
 export default function AdminEventEditorPage() {
@@ -43,7 +44,7 @@ export default function AdminEventEditorPage() {
           slug: data.slug || '',
           excerpt: data.excerpt || '',
           cover_image: data.cover_image || '',
-          event_date: data.event_date ? data.event_date.slice(0, 16) : '',
+          event_date: toDatetimeLocalValue(data.event_date),
           location: data.location || '',
           template: data.template || '',
           status: data.status || 'draft',
@@ -125,7 +126,7 @@ export default function AdminEventEditorPage() {
       slug: form.slug || undefined,
       excerpt: form.excerpt || null,
       cover_image: form.cover_image || null,
-      event_date: form.event_date ? new Date(form.event_date).toISOString() : null,
+      event_date: fromDatetimeLocalValue(form.event_date),
       location: form.location || null,
       template: form.template || null,
       status: statusOverride || form.status,
