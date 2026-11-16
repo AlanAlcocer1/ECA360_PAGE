@@ -47,51 +47,21 @@ function downloadUrlFor(item) {
   return `${api}/download?${params.toString()}`
 }
 
-async function fetchBlob(url) {
-  const res = await fetch(url)
-  if (!res.ok) throw new Error(`HTTP ${res.status}`)
-  return res.blob()
-}
-
-function triggerAnchorDownload(blob, name) {
-  const href = URL.createObjectURL(blob)
+/** Descarga por URL: el navegador streamea al toque (foto o video). */
+function triggerUrlDownload(url, name) {
   const a = document.createElement('a')
-  a.href = href
+  a.href = url
   a.download = name
   a.rel = 'noopener'
   a.style.display = 'none'
   document.body.appendChild(a)
   a.click()
   a.remove()
-  setTimeout(() => URL.revokeObjectURL(href), 4000)
 }
 
-async function tryWebShare(blob, name) {
-  if (!navigator.share || !navigator.canShare) return false
-  try {
-    const file = new File([blob], name, { type: blob.type || 'application/octet-stream' })
-    if (!navigator.canShare({ files: [file] })) return false
-    await navigator.share({ files: [file], title: name })
-    return true
-  } catch (err) {
-    // Usuario canceló el share → no es error de descarga
-    if (err?.name === 'AbortError') return true
-    return false
-  }
-}
-
-/**
- * Una descarga. En móvil intenta Web Share (guardar en Fotos);
- * si no, ancla con blob. Todo pasa por el API (sin CORS R2).
- */
-async function saveOne(item, index, { preferShare = false } = {}) {
+function saveOne(item, index) {
   const name = fileName(item, index, { asPng: item.type !== 'video' })
-  const blob = await fetchBlob(downloadUrlFor(item))
-  if (preferShare) {
-    const shared = await tryWebShare(blob, name)
-    if (shared) return 'shared'
-  }
-  triggerAnchorDownload(blob, name)
+  triggerUrlDownload(downloadUrlFor(item), name)
   return 'download'
 }
 
@@ -207,12 +177,11 @@ export default function MediaGalleryPicker({
       for (let n = 0; n < indexes.length; n += 1) {
         const i = indexes[n]
         try {
-          await saveOne(list[i], i, { preferShare: mobile && indexes.length === 1 })
+          saveOne(list[i], i)
           ok += 1
         } catch {
           fail += 1
         }
-        // Pausa para no disparar el bloqueo anti-multi-download
         if (n < indexes.length - 1) {
           await new Promise((r) => setTimeout(r, mobile ? 1400 : 700))
         }
@@ -222,19 +191,18 @@ export default function MediaGalleryPicker({
     }
   }
 
-  const downloadQueueNext = async () => {
-    if (!queue || busy === 'queue-item') return
+  const downloadQueueNext = () => {
+    if (!queue) return
     const { indexes, cursor, ok, fail } = queue
     if (cursor >= indexes.length) {
       finishQueue(ok, fail)
       return
     }
-    setBusy('queue-item')
     const i = indexes[cursor]
     let nextOk = ok
     let nextFail = fail
     try {
-      await saveOne(list[i], i, { preferShare: true })
+      saveOne(list[i], i)
       nextOk += 1
     } catch {
       nextFail += 1
@@ -421,15 +389,12 @@ export default function MediaGalleryPicker({
           <div className="absolute inset-0 z-[110] flex items-end justify-center bg-black/70 p-4 sm:items-center">
             <div className="w-full max-w-sm border border-white/15 bg-[#141416] p-5 text-white shadow-2xl">
               <p className="text-xs font-semibold uppercase tracking-wider text-white/50">
-                Descarga {queue.cursor + 1} de {queue.indexes.length}
+                {queue.cursor + 1} de {queue.indexes.length}
               </p>
               <p className="mt-2 font-display text-xl font-semibold">
-                {queueItem?.type === 'video' ? 'Video' : 'Foto'} lista para guardar
+                {queueItem?.type === 'video' ? 'Video listo para guardar' : 'Foto lista para guardar'}
               </p>
-              <p className="mt-2 text-sm text-white/60">
-                En el celular el navegador bloquea bajar varias de golpe. Toca el botón por cada
-                archivo (sin ZIP).
-              </p>
+              <p className="mt-2 text-sm text-white/60">Ve guardando uno por uno.</p>
               {queueItem && (
                 <div className="mt-4 overflow-hidden bg-black/40">
                   <img
