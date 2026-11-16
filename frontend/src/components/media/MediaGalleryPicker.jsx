@@ -406,16 +406,11 @@ export default function MediaGalleryPicker({
               )}
               <button
                 type="button"
-                disabled={busy === 'queue-item'}
                 onClick={downloadQueueNext}
-                className="mt-5 flex w-full items-center justify-center gap-2 bg-brand px-4 py-3.5 text-sm font-semibold text-white disabled:opacity-50"
+                className="mt-5 flex w-full items-center justify-center gap-2 bg-brand px-4 py-3.5 text-sm font-semibold text-white"
               >
                 <Download size={16} />
-                {busy === 'queue-item'
-                  ? 'Guardando…'
-                  : queue.cursor === 0
-                    ? 'Guardar esta'
-                    : 'Guardar siguiente'}
+                {queue.cursor === 0 ? 'Guardar esta' : 'Guardar siguiente'}
               </button>
               <button
                 type="button"
