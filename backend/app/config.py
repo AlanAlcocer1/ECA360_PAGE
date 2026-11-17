@@ -30,6 +30,8 @@ class Settings(BaseSettings):
     r2_bucket: str = "eca360-media"
     r2_endpoint: str = ""
     r2_public_base_url: str = ""
+    # Carpeta dentro del bucket (prefijo S3). Ej: "eca360" → eca360/images/...
+    r2_prefix: str = ""
 
     @property
     def cors_origin_list(self) -> list[str]:
@@ -39,6 +41,10 @@ class Settings(BaseSettings):
     @property
     def cors_allow_all(self) -> bool:
         return "*" in self.cors_origin_list
+
+    @property
+    def r2_key_prefix(self) -> str:
+        return (self.r2_prefix or "").strip().strip("/")
 
     @property
     def r2_configured(self) -> bool:
@@ -55,4 +61,3 @@ class Settings(BaseSettings):
 @lru_cache
 def get_settings() -> Settings:
     return Settings()
-

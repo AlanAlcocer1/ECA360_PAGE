@@ -187,11 +187,14 @@ R2_SECRET_ACCESS_KEY=...
 R2_BUCKET=eca360-media
 R2_ENDPOINT=https://<ACCOUNT_ID>.r2.cloudflarestorage.com
 R2_PUBLIC_BASE_URL=https://pub-xxxxx.r2.dev
+# Si creaste una carpeta dentro del bucket, pon su nombre aquí (sin / inicial)
+R2_PREFIX=
 ```
 
 Notas:
 
 - `DATABASE_URL` lleva **cuatro** slashes: `sqlite:////data/eca360.db` (ruta absoluta en Linux).
+- `R2_PREFIX`: en R2 las “carpetas” son prefijos. Si tu carpeta se llama `eca360`, pon `R2_PREFIX=eca360` y los archivos quedan en `eca360/images/…`.
 - Cuando tengas el front en Cloudflare, `CORS_ORIGINS` debe incluir exactamente esas URLs (con `https://`).
 - Incluye `https://eca360-page.pages.dev` mientras el front viva ahí (y cualquier preview `https://*.eca360-page.pages.dev` si lo usas).
 - Tras cambiar `CORS_ORIGINS` o variables R2 en Coolify, haz **Redeploy** (el proceso ya corriendo no releerá el `.env`).
