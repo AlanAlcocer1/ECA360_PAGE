@@ -33,9 +33,12 @@ function applyTheme(settings) {
   root.style.setProperty('--color-ink', settings.color_ink || DEFAULT_SETTINGS.color_ink)
   root.style.setProperty('--color-surface', settings.color_surface || DEFAULT_SETTINGS.color_surface)
 
-  const favicon = document.querySelector('link[rel="icon"]')
-  if (favicon && settings.favicon_url) {
-    favicon.href = mediaUrl(settings.favicon_url)
+  // Usar el logo del sitio (no el favicon negro del admin).
+  const icon = settings.logo_url ? mediaUrl(settings.logo_url) : null
+  if (icon) {
+    document.querySelectorAll('link[rel="icon"], link[rel="apple-touch-icon"]').forEach((el) => {
+      el.href = icon
+    })
   }
 }
 
